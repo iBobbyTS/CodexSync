@@ -1,0 +1,568 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		B0D7C2BF2FCE2DB000808D84 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0D7C2A72FCE2DAF00808D84 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B0D7C2AE2FCE2DAF00808D84;
+			remoteInfo = CodexSync;
+		};
+		B0D7C2C92FCE2DB000808D84 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B0D7C2A72FCE2DAF00808D84 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B0D7C2AE2FCE2DAF00808D84;
+			remoteInfo = CodexSync;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		B0D7C2AF2FCE2DAF00808D84 /* CodexSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0D7C2BE2FCE2DB000808D84 /* CodexSyncTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CodexSyncTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0D7C2C82FCE2DB000808D84 /* CodexSyncUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CodexSyncUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B0D7C2B12FCE2DAF00808D84 /* CodexSync */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CodexSync;
+			sourceTree = "<group>";
+		};
+		B0D7C2C12FCE2DB000808D84 /* CodexSyncTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CodexSyncTests;
+			sourceTree = "<group>";
+		};
+		B0D7C2CB2FCE2DB000808D84 /* CodexSyncUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CodexSyncUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B0D7C2AC2FCE2DAF00808D84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2BB2FCE2DB000808D84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2C52FCE2DB000808D84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B0D7C2A62FCE2DAF00808D84 = {
+			isa = PBXGroup;
+			children = (
+				B0D7C2B12FCE2DAF00808D84 /* CodexSync */,
+				B0D7C2C12FCE2DB000808D84 /* CodexSyncTests */,
+				B0D7C2CB2FCE2DB000808D84 /* CodexSyncUITests */,
+				B0D7C2B02FCE2DAF00808D84 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B0D7C2B02FCE2DAF00808D84 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B0D7C2AF2FCE2DAF00808D84 /* CodexSync.app */,
+				B0D7C2BE2FCE2DB000808D84 /* CodexSyncTests.xctest */,
+				B0D7C2C82FCE2DB000808D84 /* CodexSyncUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B0D7C2AE2FCE2DAF00808D84 /* CodexSync */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0D7C2D22FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSync" */;
+			buildPhases = (
+				B0D7C2AB2FCE2DAF00808D84 /* Sources */,
+				B0D7C2AC2FCE2DAF00808D84 /* Frameworks */,
+				B0D7C2AD2FCE2DAF00808D84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B0D7C2B12FCE2DAF00808D84 /* CodexSync */,
+			);
+			name = CodexSync;
+			packageProductDependencies = (
+			);
+			productName = CodexSync;
+			productReference = B0D7C2AF2FCE2DAF00808D84 /* CodexSync.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B0D7C2BD2FCE2DB000808D84 /* CodexSyncTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0D7C2D52FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSyncTests" */;
+			buildPhases = (
+				B0D7C2BA2FCE2DB000808D84 /* Sources */,
+				B0D7C2BB2FCE2DB000808D84 /* Frameworks */,
+				B0D7C2BC2FCE2DB000808D84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B0D7C2C02FCE2DB000808D84 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B0D7C2C12FCE2DB000808D84 /* CodexSyncTests */,
+			);
+			name = CodexSyncTests;
+			packageProductDependencies = (
+			);
+			productName = CodexSyncTests;
+			productReference = B0D7C2BE2FCE2DB000808D84 /* CodexSyncTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B0D7C2C72FCE2DB000808D84 /* CodexSyncUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B0D7C2D82FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSyncUITests" */;
+			buildPhases = (
+				B0D7C2C42FCE2DB000808D84 /* Sources */,
+				B0D7C2C52FCE2DB000808D84 /* Frameworks */,
+				B0D7C2C62FCE2DB000808D84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B0D7C2CA2FCE2DB000808D84 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B0D7C2CB2FCE2DB000808D84 /* CodexSyncUITests */,
+			);
+			name = CodexSyncUITests;
+			packageProductDependencies = (
+			);
+			productName = CodexSyncUITests;
+			productReference = B0D7C2C82FCE2DB000808D84 /* CodexSyncUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B0D7C2A72FCE2DAF00808D84 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					B0D7C2AE2FCE2DAF00808D84 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					B0D7C2BD2FCE2DB000808D84 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = B0D7C2AE2FCE2DAF00808D84;
+					};
+					B0D7C2C72FCE2DB000808D84 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = B0D7C2AE2FCE2DAF00808D84;
+					};
+				};
+			};
+			buildConfigurationList = B0D7C2AA2FCE2DAF00808D84 /* Build configuration list for PBXProject "CodexSync" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B0D7C2A62FCE2DAF00808D84;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B0D7C2B02FCE2DAF00808D84 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B0D7C2AE2FCE2DAF00808D84 /* CodexSync */,
+				B0D7C2BD2FCE2DB000808D84 /* CodexSyncTests */,
+				B0D7C2C72FCE2DB000808D84 /* CodexSyncUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B0D7C2AD2FCE2DAF00808D84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2BC2FCE2DB000808D84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2C62FCE2DB000808D84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B0D7C2AB2FCE2DAF00808D84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2BA2FCE2DB000808D84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0D7C2C42FCE2DB000808D84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B0D7C2C02FCE2DB000808D84 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B0D7C2AE2FCE2DAF00808D84 /* CodexSync */;
+			targetProxy = B0D7C2BF2FCE2DB000808D84 /* PBXContainerItemProxy */;
+		};
+		B0D7C2CA2FCE2DB000808D84 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B0D7C2AE2FCE2DAF00808D84 /* CodexSync */;
+			targetProxy = B0D7C2C92FCE2DB000808D84 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		B0D7C2D02FCE2DB000808D84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B0D7C2D12FCE2DB000808D84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B0D7C2D32FCE2DB000808D84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSync;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B0D7C2D42FCE2DB000808D84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSync;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B0D7C2D62FCE2DB000808D84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSyncTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CodexSync.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CodexSync";
+			};
+			name = Debug;
+		};
+		B0D7C2D72FCE2DB000808D84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSyncTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CodexSync.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CodexSync";
+			};
+			name = Release;
+		};
+		B0D7C2D92FCE2DB000808D84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSyncUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = CodexSync;
+			};
+			name = Debug;
+		};
+		B0D7C2DA2FCE2DB000808D84 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.iBobby.CodexSyncUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = CodexSync;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B0D7C2AA2FCE2DAF00808D84 /* Build configuration list for PBXProject "CodexSync" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0D7C2D02FCE2DB000808D84 /* Debug */,
+				B0D7C2D12FCE2DB000808D84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0D7C2D22FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSync" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0D7C2D32FCE2DB000808D84 /* Debug */,
+				B0D7C2D42FCE2DB000808D84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0D7C2D52FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSyncTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0D7C2D62FCE2DB000808D84 /* Debug */,
+				B0D7C2D72FCE2DB000808D84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B0D7C2D82FCE2DB000808D84 /* Build configuration list for PBXNativeTarget "CodexSyncUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B0D7C2D92FCE2DB000808D84 /* Debug */,
+				B0D7C2DA2FCE2DB000808D84 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B0D7C2A72FCE2DAF00808D84 /* Project object */;
+}
