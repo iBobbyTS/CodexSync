@@ -66,6 +66,7 @@ struct ContentView: View {
                     .onDelete(perform: deletePresets)
                 }
                 .listStyle(.sidebar)
+                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             }
             .safeAreaInset(edge: .bottom) {
                 // 左下角操作栏
@@ -243,9 +244,34 @@ struct ContentView: View {
                         let preset = configManager.presets[presetIndex]
                         
                         VStack(alignment: .leading, spacing: 20) {
-                            Text("预设详情")
-                                .font(.title2)
-                                .fontWeight(.bold)
+                            HStack(alignment: .center) {
+                                Text("预设详情")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    let success = configManager.switchPreset(preset)
+                                    if success {
+                                        NSSound.beep()
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "bolt.fill")
+                                        Text("一键应用此配置")
+                                    }
+                                    .font(.body)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.accentColor)
+                                    .cornerRadius(6)
+                                    .shadow(color: .accentColor.opacity(0.15), radius: 4)
+                                }
+                                .buttonStyle(.plain)
+                            }
                             Divider()
                             
                             HStack {
@@ -342,30 +368,10 @@ struct ContentView: View {
                                         }
                                     }
                                     
-                                    Spacer()
-                                        .frame(height: 12)
-                                    
-                                    // 激活此预设
-                                    Button(action: {
-                                        let success = configManager.switchPreset(preset)
-                                        if success {
-                                            NSSound.beep() // 拨号声反馈
-                                        }
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "bolt.fill")
-                                            Text("一键应用此配置")
-                                        }
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                        .padding(.vertical, 8)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color.accentColor)
-                                        .cornerRadius(6)
-                                    }
-                                    .buttonStyle(.plain)
+                                    // 底部一键应用按钮已重构移动至右上角“预设详情”头部右侧
                                 }
                             }
+                            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                         }
                         .padding(20)
                         
