@@ -47,7 +47,7 @@ class ConfigManager: ObservableObject {
     /// 加载默认预设
     private func loadDefaultPresets() {
         self.presets = [
-            ProviderPreset(id: UUID().uuidString, name: "官方 ChatGPT 网页账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil, authJson: nil),
+            ProviderPreset(id: UUID().uuidString, name: "ChatGPT账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil, authJson: nil),
             ProviderPreset(id: UUID().uuidString, name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here", authJson: nil)
         ]
         savePresets()
@@ -214,7 +214,7 @@ class ConfigManager: ObservableObject {
             let presetAuthJson: String?
             
             if isOfficial {
-                presetName = "导入的官方账号 (\(model))"
+                presetName = "导入的ChatGPT账号 (\(model))"
                 presetBaseUrl = nil
                 presetApiKey = nil
                 if FileManager.default.fileExists(atPath: authURL.path) {

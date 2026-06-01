@@ -126,7 +126,7 @@ struct ContentView: View {
                         VStack(spacing: 12) {
                             statusRow(title: "当前服务商 (Provider)", value: configManager.state.currentProvider, icon: "cpu", color: .blue)
                             statusRow(title: "当前模型 (Model)", value: configManager.state.currentModel, icon: "brain.head.profile", color: .purple)
-                            statusRow(title: "登录模式", value: configManager.state.isOfficial ? "官方网页登录" : "API 密钥登录", icon: "key.fill", color: .orange)
+                            statusRow(title: "登录模式", value: configManager.state.isOfficial ? "ChatGPT账号" : "API 密钥登录", icon: "key.fill", color: .orange)
                             statusRow(title: "历史会话文件数", value: "\(configManager.state.sessionFileCount) 个", icon: "doc.text.fill", color: .green)
                         }
                     }
@@ -148,7 +148,7 @@ struct ContentView: View {
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 } else {
-                                    Text("完美！本地所有历史会话均已对齐当前登录模式，侧边栏显示完整。")
+                                    Text("完美！本地所有历史会话均已对齐当前配置模式，侧边栏显示完整。")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 }
@@ -380,7 +380,7 @@ struct ContentView: View {
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                             
-                            Text("您可以为不同的 API Key 或 OpenAI 官方账号配置独立卡片，实现秒级无缝切换，并保持历史对话在侧边栏永不隐藏。")
+                            Text("您可以为不同的 API Key 或 ChatGPT账号配置独立卡片，实现秒级无缝切换，并保持历史对话在侧边栏永不隐藏。")
                                 .font(.caption)
                                 .foregroundColor(.secondary.opacity(0.8))
                                 .multilineTextAlignment(.center)
@@ -420,8 +420,8 @@ struct ContentView: View {
                             }
                         }
                     )) {
-                        Text("第三方 API 密钥登录").tag(false)
-                        Text("官方 ChatGPT 网页登录").tag(true)
+                        Text("API模式").tag(false)
+                        Text("ChatGPT账号").tag(true)
                     }
                     .pickerStyle(.radioGroup)
                     .horizontalRadioGroupLayout()
