@@ -305,16 +305,17 @@ struct ContentView: View {
                                         .textFieldStyle(.roundedBorder)
                                     }
                                     
-                                    Group {
-                                        Text("服务商标识 (Provider ID)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        TextField("例如: deepseek 或 openai", text: Binding(
-                                            get: { preset.providerId },
-                                            set: { updatePresetField(index: presetIndex, providerId: $0) }
-                                        ))
-                                        .textFieldStyle(.roundedBorder)
-                                        .disabled(preset.isOfficial) // 官方模式固定为 openai
+                                    if !preset.isOfficial {
+                                        Group {
+                                            Text("服务商标识 (Provider ID)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            TextField("例如: deepseek 或 openai", text: Binding(
+                                                get: { preset.providerId },
+                                                set: { updatePresetField(index: presetIndex, providerId: $0) }
+                                            ))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
                                     }
                                     
                                     Group {
