@@ -85,12 +85,33 @@ class ConfigManager: ObservableObject {
             newState.currentProvider = provider
             newState.currentModel = model
             
-            // 3. 读取 auth.json 鉴别官方网页模式
+            // 获取 model_providers.custom 的 name 字段
+            newState.currentCustomProviderName = editor.getValue(forKey: "name", inSection: "model_providers.custom") ?? "自定义 API"
+            
+            // 3. 读取 auth.json 鉴别官方网页模式与鉴权信息
             if FileManager.default.fileExists(atPath: authURL.path) {
                 let authData = try Data(contentsOf: authURL)
                 if let authObj = try? JSONSerialization.jsonObject(with: authData, options: []) as? [String: Any] {
                     let authMode = authObj["auth_mode"] as? String
                     newState.isOfficial = (authMode == "chatgpt")
+                    
+                    // 读取 API Key
+                    if let apiKey = authObj["OPENAI_API_KEY"] as? String {
+                        newState.currentApiKey = apiKey
+                    }
+                    
+                    // 读取 Tokens 详情 (ChatGPT 模式)
+                    if let tokens = authObj["tokens"] as? [String: Any] {
+                        newState.currentAccountId = tokens["account_id"] as? String
+                        newState.currentIdToken = tokens["id_token"] as? String
+                        newState.currentAccessToken = tokens["access_token"] as? String
+                        newState.currentRefreshToken = tokens["refresh_token"] as? String
+                    }
+                    
+                    // 读取 last_refresh
+                    if let lastRefresh = authObj["last_refresh"] {
+                        newState.currentLastRefresh = "\(lastRefresh)"
+                    }
                 }
             } else {
                 newState.isOfficial = (provider == "openai")
@@ -336,6 +357,98 @@ class ConfigManager: ObservableObject {
         }
         
         return (total, movable)
+    }
+    
+    /// 更新指定预设的 auth.json 内容
+    func updatePresetAuthJson(id: String) {
+        guard let index = presets.firstIndex(where: { $0.id == id }) else { return }
+        let old = presets[index]
+        if let authJsonStr = try? String(contentsOf: authURL, encoding: .utf8) {
+            let updated = ProviderPreset(
+                id: old.id,
+                name: old.name,
+                isOfficial: old.isOfficial,
+                providerId: old.providerId,
+                model: old.model,
+                baseUrl: old.baseUrl,
+                apiKey: old.apiKey,
+                authJson: authJsonStr
+            )
+            presets[index] = updated
+            savePresets()
+            refreshState()
+        }
+    }
+    
+    /// 从当前实际配置中全新导入为一个预设卡片并应用
+    func importCurrentConfigAsNewPreset() {
+        guard FileManager.default.fileExists(atPath: configURL.path) else { return }
+        
+        do {
+            let tomlText = try String(contentsOf: configURL, encoding: .utf8)
+            let editor = TomlEditor(text: tomlText)
+            
+            let providerId = editor.getValue(forKey: "model_provider") ?? "openai"
+            let model = editor.getValue(forKey: "model") ?? "gpt-4o"
+            
+            var isOfficial = (providerId == "openai")
+            if FileManager.default.fileExists(atPath: authURL.path) {
+                let authData = try Data(contentsOf: authURL)
+                if let authObj = try? JSONSerialization.jsonObject(with: authData, options: []) as? [String: Any] {
+                    let authMode = authObj["auth_mode"] as? String
+                    if authMode == "chatgpt" {
+                        isOfficial = true
+                    }
+                }
+            }
+            
+            let preset: ProviderPreset
+            if isOfficial {
+                let authJsonStr = try? String(contentsOf: authURL, encoding: .utf8)
+                preset = ProviderPreset(
+                    id: UUID().uuidString,
+                    name: "导入的ChatGPT账号 (\(model))",
+                    isOfficial: true,
+                    providerId: providerId,
+                    model: model,
+                    baseUrl: nil,
+                    apiKey: nil,
+                    authJson: authJsonStr
+                )
+            } else {
+                let sectionName = "model_providers.\(providerId)"
+                let name = editor.getValue(forKey: "name", inSection: sectionName) ?? "导入的预设 (\(providerId))"
+                let baseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url") ?? "https://api.openai.com/v1"
+                
+                var apiKey = ""
+                if FileManager.default.fileExists(atPath: authURL.path) {
+                    let authData = try Data(contentsOf: authURL)
+                    if let authObj = try? JSONSerialization.jsonObject(with: authData, options: []) as? [String: Any] {
+                        apiKey = authObj["OPENAI_API_KEY"] as? String ?? ""
+                    }
+                }
+                if apiKey.isEmpty {
+                    apiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? ""
+                }
+                
+                preset = ProviderPreset(
+                    id: UUID().uuidString,
+                    name: name,
+                    isOfficial: false,
+                    providerId: providerId,
+                    model: model,
+                    baseUrl: baseUrl,
+                    apiKey: apiKey,
+                    authJson: nil
+                )
+            }
+            
+            presets.append(preset)
+            savePresets()
+            refreshState()
+        } catch {
+            print("导入失败: \(error)")
+        }
     }
 }
 

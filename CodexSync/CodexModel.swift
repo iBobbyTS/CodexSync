@@ -21,6 +21,15 @@ struct CodexState {
     var movableThreads: Int = 0
     var sessionFileCount: Int = 0
     
+    // 新增字段用于预设的动态导入与更新校验
+    var currentAccountId: String? = nil
+    var currentIdToken: String? = nil
+    var currentAccessToken: String? = nil
+    var currentRefreshToken: String? = nil
+    var currentLastRefresh: String? = nil
+    var currentApiKey: String? = nil
+    var currentCustomProviderName: String = ""
+    
     var pendingSyncCount: Int {
         return movableThreads
     }

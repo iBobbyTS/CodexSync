@@ -53,13 +53,36 @@ struct ContentView: View {
                                 
                                 Spacer()
                                 
-                                // 激活指示灯
+                                // 激活与更新指示灯
                                 if configManager.state.currentProvider == preset.providerId &&
                                    (!preset.isOfficial || configManager.state.isOfficial) {
-                                    Circle()
-                                        .fill(Color.green)
-                                        .frame(width: 8, height: 8)
-                                        .shadow(color: .green.opacity(0.5), radius: 3)
+                                    if preset.isOfficial && isPresetMatchingCurrentAccount(preset) && presetNeedsUpdate(preset) {
+                                        HStack(spacing: 8) {
+                                            Button(action: {
+                                                configManager.updatePresetAuthJson(id: preset.id)
+                                            }) {
+                                                Text("更新预设")
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.white)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 3)
+                                                    .background(Color.orange)
+                                                    .cornerRadius(4)
+                                            }
+                                            .buttonStyle(.plain)
+                                            
+                                            Circle()
+                                                .fill(Color.orange)
+                                                .frame(width: 8, height: 8)
+                                                .shadow(color: .orange.opacity(0.5), radius: 3)
+                                        }
+                                    } else {
+                                        Circle()
+                                            .fill(Color.green)
+                                            .frame(width: 8, height: 8)
+                                            .shadow(color: .green.opacity(0.5), radius: 3)
+                                    }
                                 }
                             }
                         }
@@ -79,6 +102,91 @@ struct ContentView: View {
                         }
                     }
                     .onDelete(perform: deletePresets)
+                    
+                    // 动态预设导入行 (当当前 ~/.codex 配置不在列表中时显示在最底行)
+                    if configManager.state.isOfficial {
+                        if !chatGptPresetExists {
+                            HStack {
+                                Image(systemName: "person.crop.circle.badge.plus")
+                                    .font(.title3)
+                                    .foregroundColor(.blue)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("导入当前~/.codex里的账号")
+                                        .fontWeight(.medium)
+                                    
+                                    Text(configManager.state.currentModel)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        configManager.importCurrentConfigAsNewPreset()
+                                    }) {
+                                        Text("导入预设")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 3)
+                                            .background(Color.blue)
+                                            .cornerRadius(4)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: .green.opacity(0.5), radius: 3)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    } else {
+                        if !apiPresetExists {
+                            HStack {
+                                Image(systemName: "network.badge.shield.half.filled")
+                                    .font(.title3)
+                                    .foregroundColor(.purple)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("导入当前~/.codex里的API")
+                                        .fontWeight(.medium)
+                                    
+                                    Text(configManager.state.currentCustomProviderName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        configManager.importCurrentConfigAsNewPreset()
+                                    }) {
+                                        Text("导入预设")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 3)
+                                            .background(Color.blue)
+                                            .cornerRadius(4)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: .green.opacity(0.5), radius: 3)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
                 }
                 .listStyle(.sidebar)
                 .scrollBounceBehavior(.basedOnSize, axes: .vertical)
@@ -91,19 +199,6 @@ struct ContentView: View {
                         showingAddSheet = true
                     }) {
                         Label("添加预设", systemImage: "plus")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundColor(.accentColor)
-                    
-                    Divider()
-                        .frame(height: 12)
-                    
-                    Button(action: {
-                        let res = configManager.importCurrentConfigAsPreset()
-                        importAlertMessage = res.message
-                        showingImportAlert = true
-                    }) {
-                        Label("导入当前配置", systemImage: "arrow.down.doc")
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.accentColor)
@@ -259,6 +354,8 @@ struct ContentView: View {
                         let preset = configManager.presets[presetIndex]
                         let isActive = configManager.state.currentProvider == preset.providerId &&
                                        (!preset.isOfficial || configManager.state.isOfficial)
+                        let needsUpdate = preset.isOfficial && isPresetMatchingCurrentAccount(preset) && presetNeedsUpdate(preset)
+                        let isButtonDisabled = isActive && !needsUpdate
                         
                         VStack(alignment: .leading, spacing: 20) {
                             HStack(alignment: .center) {
@@ -303,15 +400,15 @@ struct ContentView: View {
                                     }
                                     .font(.body)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(isActive ? .secondary : .white)
+                                    .foregroundColor(isButtonDisabled ? .secondary : .white)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background(isActive ? Color.gray.opacity(0.2) : Color.accentColor)
+                                    .background(isButtonDisabled ? Color.gray.opacity(0.2) : Color.accentColor)
                                     .cornerRadius(6)
-                                    .shadow(color: isActive ? .clear : .accentColor.opacity(0.15), radius: 4)
+                                    .shadow(color: isButtonDisabled ? .clear : .accentColor.opacity(0.15), radius: 4)
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(isActive)
+                                .disabled(isButtonDisabled)
                             }
                             Divider()
                             
@@ -629,6 +726,72 @@ struct ContentView: View {
         configManager.presets.remove(atOffsets: offsets)
         configManager.savePresets()
         selectedPresetId = nil
+    }
+    
+    // MARK: - 预设更新与校验助手
+    
+    private func getAccountIdFromAuthJson(_ jsonStr: String?) -> String? {
+        guard let data = jsonStr?.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+              let tokens = dict["tokens"] as? [String: Any],
+              let accountId = tokens["account_id"] as? String else {
+            return nil
+        }
+        return accountId
+    }
+    
+    private func isPresetMatchingCurrentAccount(_ preset: ProviderPreset) -> Bool {
+        guard preset.isOfficial else { return false }
+        guard let accountId = getAccountIdFromAuthJson(preset.authJson),
+              let currentAccountId = configManager.state.currentAccountId else {
+            return false
+        }
+        return accountId == currentAccountId
+    }
+    
+    private func presetNeedsUpdate(_ preset: ProviderPreset) -> Bool {
+        guard preset.isOfficial else { return false }
+        guard let authJsonData = preset.authJson?.data(using: .utf8),
+              let presetDict = try? JSONSerialization.jsonObject(with: authJsonData, options: []) as? [String: Any] else {
+            return true
+        }
+        
+        let presetTokens = presetDict["tokens"] as? [String: Any] ?? [:]
+        let presetIdToken = presetTokens["id_token"] as? String ?? ""
+        let presetAccessToken = presetTokens["access_token"] as? String ?? ""
+        let presetRefreshToken = presetTokens["refresh_token"] as? String ?? ""
+        let presetLastRefresh = presetDict["last_refresh"] != nil ? "\(presetDict["last_refresh"]!)" : ""
+        
+        let currentIdToken = configManager.state.currentIdToken ?? ""
+        let currentAccessToken = configManager.state.currentAccessToken ?? ""
+        let currentRefreshToken = configManager.state.currentRefreshToken ?? ""
+        let currentLastRefresh = configManager.state.currentLastRefresh ?? ""
+        
+        return presetIdToken != currentIdToken ||
+               presetAccessToken != currentAccessToken ||
+               presetRefreshToken != currentRefreshToken ||
+               presetLastRefresh != currentLastRefresh
+    }
+    
+    private var chatGptPresetExists: Bool {
+        guard configManager.state.isOfficial,
+              let currentAccountId = configManager.state.currentAccountId else {
+            return true
+        }
+        return configManager.presets.contains { preset in
+            guard preset.isOfficial else { return false }
+            return getAccountIdFromAuthJson(preset.authJson) == currentAccountId
+        }
+    }
+    
+    private var apiPresetExists: Bool {
+        guard !configManager.state.isOfficial,
+              let currentApiKey = configManager.state.currentApiKey else {
+            return true
+        }
+        return configManager.presets.contains { preset in
+            !preset.isOfficial && preset.apiKey == currentApiKey
+        }
     }
 }
 
