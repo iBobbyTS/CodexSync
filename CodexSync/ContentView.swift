@@ -244,6 +244,8 @@ struct ContentView: View {
                        let presetIndex = configManager.presets.firstIndex(where: { $0.id == selectedId }) {
                         
                         let preset = configManager.presets[presetIndex]
+                        let isActive = configManager.state.currentProvider == preset.providerId &&
+                                       (!preset.isOfficial || configManager.state.isOfficial)
                         
                         VStack(alignment: .leading, spacing: 20) {
                             HStack(alignment: .center) {
@@ -265,14 +267,15 @@ struct ContentView: View {
                                     }
                                     .font(.body)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(isActive ? .secondary : .white)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background(Color.accentColor)
+                                    .background(isActive ? Color.gray.opacity(0.2) : Color.accentColor)
                                     .cornerRadius(6)
-                                    .shadow(color: .accentColor.opacity(0.15), radius: 4)
+                                    .shadow(color: isActive ? .clear : .accentColor.opacity(0.15), radius: 4)
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(isActive)
                             }
                             Divider()
                             
