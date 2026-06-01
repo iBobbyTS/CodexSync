@@ -1,59 +1,497 @@
-//
-//  ContentView.swift
-//  CodexSync
-//
-//  Created by iBobby on 2026-06-01.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @EnvironmentObject var configManager: ConfigManager
+    @EnvironmentObject var syncEngine: SyncEngine
+    
+    @State private var selectedPresetId: String? = nil
+    @State private var showingAddSheet = false
+    
+    // 自定义预设的新增/编辑临时状态
+    @State private var newName = ""
+    @State private var newIsOfficial = false
+    @State private var newProviderId = "custom"
+    @State private var newModel = "gpt-4o"
+    @State private var newBaseUrl = ""
+    @State private var newApiKey = ""
+    
     var body: some View {
         NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+            // 左侧边栏：预设列表
+            VStack(alignment: .leading, spacing: 0) {
+                Text("配置预设")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                
+                List(selection: $selectedPresetId) {
+                    ForEach(configManager.presets) { preset in
+                        HStack {
+                            Image(systemName: preset.isOfficial ? "person.crop.circle" : "network")
+                                .font(.title3)
+                                .foregroundColor(preset.isOfficial ? .blue : .purple)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(preset.name)
+                                    .fontWeight(.medium)
+                                
+                                Text(preset.model)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // 激活指示灯
+                            if configManager.state.currentProvider == preset.providerId &&
+                               (!preset.isOfficial || configManager.state.isOfficial) {
+                                Circle()
+                                    .fill(Color.green)
+                                    .frame(width: 8, height: 8)
+                                    .shadow(color: .green.opacity(0.5), radius: 3)
+                            }
+                        }
+                        .tag(preset.id)
                     }
+                    .onDelete(perform: deletePresets)
                 }
-                .onDelete(perform: deleteItems)
+                .listStyle(.sidebar)
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+            .safeAreaInset(edge: .bottom) {
+                // 左下角操作栏
+                HStack {
+                    Button(action: {
+                        resetAddSheetFields()
+                        showingAddSheet = true
+                    }) {
+                        Image(systemName: "plus")
+                        Text("添加预设")
                     }
+                    .buttonStyle(.plain)
+                    .padding(12)
+                    .foregroundColor(.accentColor)
+                    
+                    Spacer()
                 }
+                .background(.ultraThinMaterial)
             }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
+            
         } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            // 右侧主面板
+            HSplitView {
+                // 左半：状态指示与一键同步核心面板
+                VStack(spacing: 20) {
+                    // 1. 状态仪表盘
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Codex 本地状态")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Spacer()
+                            Button(action: {
+                                configManager.refreshState()
+                            }) {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("刷新本地状态")
+                        }
+                        
+                        Divider()
+                        
+                        VStack(spacing: 12) {
+                            statusRow(title: "当前服务商 (Provider)", value: configManager.state.currentProvider, icon: "cpu", color: .blue)
+                            statusRow(title: "当前模型 (Model)", value: configManager.state.currentModel, icon: "brain.head.profile", color: .purple)
+                            statusRow(title: "登录模式", value: configManager.state.isOfficial ? "官方网页登录" : "API 密钥登录", icon: "key.fill", color: .orange)
+                            statusRow(title: "历史会话文件数", value: "\(configManager.state.sessionFileCount) 个", icon: "doc.text.fill", color: .green)
+                        }
+                    }
+                    .padding(20)
+                    .background(Color(NSColor.windowBackgroundColor))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                    
+                    // 2. 同步状态面板
+                    VStack(spacing: 16) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("本地同步就绪状况")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                
+                                if configManager.state.pendingSyncCount > 0 {
+                                    Text("检测到有 \(configManager.state.pendingSyncCount) 个历史会话属于旧模式，目前在 Codex 侧边栏已被隐藏。")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("完美！本地所有历史会话均已对齐当前登录模式，侧边栏显示完整。")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            Spacer()
+                            
+                            // 悬浮数字徽章
+                            ZStack {
+                                Circle()
+                                    .fill(configManager.state.pendingSyncCount > 0 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
+                                    .frame(width: 44, height: 44)
+                                
+                                Text("\(configManager.state.pendingSyncCount)")
+                                    .font(.system(.title3, design: .rounded))
+                                    .fontWeight(.bold)
+                                    .foregroundColor(configManager.state.pendingSyncCount > 0 ? .orange : .green)
+                            }
+                        }
+                        
+                        if syncEngine.isSyncing {
+                            // 正在同步中的 Spinner
+                            VStack(spacing: 8) {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                Text(syncEngine.progressMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                        } else {
+                            // 一键同步按钮
+                            Button(action: {
+                                syncEngine.startSync(
+                                    currentProvider: configManager.state.currentProvider,
+                                    currentModel: configManager.state.currentModel
+                                ) { success in
+                                    if success {
+                                        configManager.refreshState()
+                                    }
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                    Text("一键对齐本地历史")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(configManager.state.pendingSyncCount > 0 ? Color.blue : Color.gray.opacity(0.5))
+                                )
+                                .shadow(color: configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(syncEngine.isSyncing)
+                        }
+                        
+                        // 提示与错误信息
+                        if let error = syncEngine.syncError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(8)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(6)
+                        } else if syncEngine.syncSuccess {
+                            Text("同步完成！请重启 Codex 客户端以刷新侧边栏。")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .padding(8)
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(6)
+                        }
+                    }
+                    .padding(20)
+                    .background(Color(NSColor.windowBackgroundColor))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                    
+                    Spacer()
+                }
+                .padding(20)
+                .frame(minWidth: 260)
+                
+                // 右半：当前预设的配置修改与激活详情
+                VStack {
+                    if let selectedId = selectedPresetId,
+                       let presetIndex = configManager.presets.firstIndex(where: { $0.id == selectedId }) {
+                        
+                        let preset = configManager.presets[presetIndex]
+                        
+                        VStack(alignment: .leading, spacing: 20) {
+                            Text("预设详情")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            Divider()
+                            
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    Group {
+                                        Text("预设名称")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        TextField("例如: DeepSeek API", text: Binding(
+                                            get: { preset.name },
+                                            set: { updatePresetField(index: presetIndex, name: $0) }
+                                        ))
+                                        .textFieldStyle(.roundedBorder)
+                                    }
+                                    
+                                    Group {
+                                        Text("服务商标识 (Provider ID)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        TextField("例如: deepseek 或 openai", text: Binding(
+                                            get: { preset.providerId },
+                                            set: { updatePresetField(index: presetIndex, providerId: $0) }
+                                        ))
+                                        .textFieldStyle(.roundedBorder)
+                                        .disabled(preset.isOfficial) // 官方模式固定为 openai
+                                    }
+                                    
+                                    Group {
+                                        Text("模型名称 (Model)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        TextField("例如: deepseek-chat", text: Binding(
+                                            get: { preset.model },
+                                            set: { updatePresetField(index: presetIndex, model: $0) }
+                                        ))
+                                        .textFieldStyle(.roundedBorder)
+                                    }
+                                    
+                                    if !preset.isOfficial {
+                                        Group {
+                                            Text("接口地址 (Base URL)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            TextField("例如: https://api.deepseek.com/v1", text: Binding(
+                                                get: { preset.baseUrl ?? "" },
+                                                set: { updatePresetField(index: presetIndex, baseUrl: $0) }
+                                            ))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                        
+                                        Group {
+                                            Text("API 密钥 (API Key)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            SecureField("输入您的 API 密钥", text: Binding(
+                                                get: { preset.apiKey ?? "" },
+                                                set: { updatePresetField(index: presetIndex, apiKey: $0) }
+                                            ))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                        .frame(height: 12)
+                                    
+                                    // 激活此预设
+                                    Button(action: {
+                                        let success = configManager.switchPreset(preset)
+                                        if success {
+                                            NSSound.beep() // 拨号声反馈
+                                        }
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "bolt.fill")
+                                            Text("一键应用此配置")
+                                        }
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .padding(.vertical, 8)
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color.accentColor)
+                                        .cornerRadius(6)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .padding(20)
+                        
+                    } else {
+                        // 未选择预设时的欢迎提示
+                        VStack(spacing: 16) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 48))
+                                .foregroundColor(.secondary.opacity(0.7))
+                            
+                            Text("请在左侧选择一个配置预设")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("您可以为不同的 API Key 或 OpenAI 官方账号配置独立卡片，实现秒级无缝切换，并保持历史对话在侧边栏永不隐藏。")
+                                .font(.caption)
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .frame(minWidth: 220)
             }
         }
+        .sheet(isPresented: $showingAddSheet) {
+            // 新增预设 Sheet 弹窗
+            VStack(alignment: .leading, spacing: 16) {
+                Text("新增预设卡片")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                
+                Divider()
+                
+                VStack(spacing: 10) {
+                    HStack {
+                        Text("预设名称")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("例如: DeepSeek API", text: $newName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    Picker("模式类型", selection: $newIsOfficial) {
+                        Text("第三方 API 密钥登录").tag(false)
+                        Text("官方 ChatGPT 网页登录").tag(true)
+                    }
+                    .pickerStyle(.radioGroup)
+                    .horizontalRadioGroupLayout()
+                    
+                    HStack {
+                        Text("服务商 ID")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("例如: deepseek", text: $newProviderId)
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(newIsOfficial)
+                    }
+                    
+                    HStack {
+                        Text("推荐模型")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("例如: deepseek-chat", text: $newModel)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    if !newIsOfficial {
+                        HStack {
+                            Text("接口端点")
+                                .frame(width: 100, alignment: .leading)
+                            TextField("https://api.deepseek.com/v1", text: $newBaseUrl)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        HStack {
+                            Text("API 密钥")
+                                .frame(width: 100, alignment: .leading)
+                            SecureField("API Key", text: $newApiKey)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                HStack {
+                    Spacer()
+                    Button("取消") {
+                        showingAddSheet = false
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    
+                    Button("创建并保存") {
+                        let provider = newIsOfficial ? "openai" : newProviderId
+                        let preset = ProviderPreset(
+                            name: newName,
+                            isOfficial: newIsOfficial,
+                            providerId: provider,
+                            model: newModel,
+                            baseUrl: newIsOfficial ? nil : newBaseUrl,
+                            apiKey: newIsOfficial ? nil : newApiKey
+                        )
+                        configManager.presets.append(preset)
+                        configManager.savePresets()
+                        selectedPresetId = preset.id
+                        showingAddSheet = false
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .padding(20)
+            .frame(width: 440)
+        }
+        .onAppear {
+            configManager.refreshState()
+        }
+    }
+    
+    // MARK: - 辅助组件
+    
+    private func statusRow(title: String, value: String, icon: String, color: Color) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(color)
+                .frame(width: 20)
+            
+            Text(title)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+                .lineLimit(1)
+        }
+    }
+    
+    // MARK: - 辅助方法
+    
+    private func resetAddSheetFields() {
+        newName = ""
+        newIsOfficial = false
+        newProviderId = "custom"
+        newModel = "gpt-4o"
+        newBaseUrl = ""
+        newApiKey = ""
+    }
+    
+    private func updatePresetField(
+        index: Int,
+        name: String? = nil,
+        isOfficial: Bool? = nil,
+        providerId: String? = nil,
+        model: String? = nil,
+        baseUrl: String? = nil,
+        apiKey: String? = nil
+    ) {
+        let old = configManager.presets[index]
+        let updated = ProviderPreset(
+            name: name ?? old.name,
+            isOfficial: isOfficial ?? old.isOfficial,
+            providerId: providerId ?? old.providerId,
+            model: model ?? old.model,
+            baseUrl: baseUrl ?? old.baseUrl,
+            apiKey: apiKey ?? old.apiKey
+        )
+        configManager.presets[index] = updated
+        configManager.savePresets()
+    }
+    
+    private func deletePresets(offsets: IndexSet) {
+        configManager.presets.remove(atOffsets: offsets)
+        configManager.savePresets()
+        selectedPresetId = nil
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .environmentObject(ConfigManager())
+        .environmentObject(SyncEngine())
 }

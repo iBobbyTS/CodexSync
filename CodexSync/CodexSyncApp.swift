@@ -1,32 +1,17 @@
-//
-//  CodexSyncApp.swift
-//  CodexSync
-//
-//  Created by iBobby on 2026-06-01.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct CodexSyncApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    @StateObject private var configManager = ConfigManager()
+    @StateObject private var syncEngine = SyncEngine()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(configManager)
+                .environmentObject(syncEngine)
+                .frame(minWidth: 500, minHeight: 400)
         }
-        .modelContainer(sharedModelContainer)
+        .windowStyle(.hiddenTitleBar)
     }
 }
