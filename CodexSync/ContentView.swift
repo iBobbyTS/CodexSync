@@ -615,6 +615,11 @@ struct ContentView: View {
                                     .font(.caption)
                                     .foregroundColor(.red)
                                     .padding(.top, 2)
+                            } else if isNewAccountIdAlreadyExists {
+                                Text("⚠️ 该账号 (Account ID) 已存在于预设列表中，请勿重复添加")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.top, 2)
                             }
                         }
                     } else {
@@ -663,7 +668,7 @@ struct ContentView: View {
                     .keyboardShortcut(.defaultAction)
                     .disabled(
                         newName.trimmingCharacters(in: .whitespaces).isEmpty ||
-                        (newIsOfficial && jsonValidationError(newAuthJson) != nil)
+                        (newIsOfficial && (jsonValidationError(newAuthJson) != nil || isNewAccountIdAlreadyExists))
                     )
                 }
             }
@@ -827,6 +832,17 @@ struct ContentView: View {
         }
         return configManager.presets.contains { preset in
             !preset.isOfficial && preset.apiKey == currentApiKey
+        }
+    }
+    
+    private var isNewAccountIdAlreadyExists: Bool {
+        guard newIsOfficial,
+              let newAccountId = getAccountIdFromAuthJson(newAuthJson) else {
+            return false
+        }
+        return configManager.presets.contains { preset in
+            guard preset.isOfficial else { return false }
+            return getAccountIdFromAuthJson(preset.authJson) == newAccountId
         }
     }
 }
