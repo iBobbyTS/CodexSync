@@ -34,32 +34,34 @@ struct ContentView: View {
                 
                 List(selection: $selectedPresetId) {
                     ForEach(configManager.presets) { preset in
-                        HStack {
-                            Image(systemName: preset.isOfficial ? "person.crop.circle" : "network")
-                                .font(.title3)
-                                .foregroundColor(preset.isOfficial ? .blue : .purple)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(preset.name)
-                                    .fontWeight(.medium)
+                        NavigationLink(value: preset.id) {
+                            HStack {
+                                Image(systemName: preset.isOfficial ? "person.crop.circle" : "network")
+                                    .font(.title3)
+                                    .foregroundColor(preset.isOfficial ? .blue : .purple)
                                 
-                                Text(preset.model)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            // 激活指示灯
-                            if configManager.state.currentProvider == preset.providerId &&
-                               (!preset.isOfficial || configManager.state.isOfficial) {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 8, height: 8)
-                                    .shadow(color: .green.opacity(0.5), radius: 3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.name)
+                                        .fontWeight(.medium)
+                                    
+                                    Text(preset.model)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                // 激活指示灯
+                                if configManager.state.currentProvider == preset.providerId &&
+                                   (!preset.isOfficial || configManager.state.isOfficial) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: .green.opacity(0.5), radius: 3)
+                                }
                             }
                         }
-                        .tag(preset.id)
+                        .tag(preset.id as String?)
                     }
                     .onDelete(perform: deletePresets)
                 }
@@ -303,12 +305,13 @@ struct ContentView: View {
                                             Text("auth.json 内容 (JSON 字符串)")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
-                                            TextEditor(text: Binding(
+                                            MacCodeEditor(text: Binding(
                                                 get: { preset.authJson ?? "" },
                                                 set: { updatePresetField(index: presetIndex, authJson: $0) }
                                             ))
-                                            .font(.system(.body, design: .monospaced))
                                             .frame(height: 120)
+                                            .padding(4)
+                                            .background(Color(NSColor.controlBackgroundColor))
                                             .cornerRadius(6)
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 6)
@@ -433,9 +436,10 @@ struct ContentView: View {
                             Text("auth.json 内容 (JSON 字符串)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            TextEditor(text: $newAuthJson)
-                                .font(.system(.body, design: .monospaced))
+                            MacCodeEditor(text: $newAuthJson)
                                 .frame(height: 120)
+                                .padding(4)
+                                .background(Color(NSColor.controlBackgroundColor))
                                 .cornerRadius(6)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
@@ -561,6 +565,71 @@ struct ContentView: View {
         configManager.presets.remove(atOffsets: offsets)
         configManager.savePresets()
         selectedPresetId = nil
+    }
+}
+
+/// 专为 macOS 编写的 JSON / 代码编辑器，支持横向和纵向滚动，禁用自动换行，并关闭引号的自动替换。
+struct MacCodeEditor: NSViewRepresentable {
+    @Binding var text: String
+    
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        
+        let contentSize = scrollView.contentSize
+        
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height))
+        textView.minSize = NSSize(width: 0.0, height: contentSize.height)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = true
+        textView.autoresizingMask = [.width, .height]
+        
+        // 允许横向滚动且不换行
+        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = false
+        
+        // 设置等宽字体
+        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.isRichText = false
+        textView.importsGraphics = false
+        
+        // 关键：关闭系统级别的引号与破折号智能替换，避免输入双引号时报错
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.delegate = context.coordinator
+        
+        scrollView.documentView = textView
+        return scrollView
+    }
+    
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? NSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: MacCodeEditor
+        
+        init(_ parent: MacCodeEditor) {
+            self.parent = parent
+        }
+        
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            self.parent.text = textView.string
+        }
     }
 }
 
