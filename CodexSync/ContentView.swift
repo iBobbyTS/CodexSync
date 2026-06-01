@@ -64,6 +64,19 @@ struct ContentView: View {
                             }
                         }
                         .tag(preset.id as String?)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                if let idx = configManager.presets.firstIndex(where: { $0.id == preset.id }) {
+                                    configManager.presets.remove(at: idx)
+                                    configManager.savePresets()
+                                    if selectedPresetId == preset.id {
+                                        selectedPresetId = nil
+                                    }
+                                }
+                            } label: {
+                                Label("删除预设", systemImage: "trash")
+                            }
+                        }
                     }
                     .onDelete(perform: deletePresets)
                 }
@@ -254,6 +267,29 @@ struct ContentView: View {
                                     .fontWeight(.bold)
                                 
                                 Spacer()
+                                
+                                // 删除预设按钮
+                                Button(action: {
+                                    if let idx = configManager.presets.firstIndex(where: { $0.id == preset.id }) {
+                                        configManager.presets.remove(at: idx)
+                                        configManager.savePresets()
+                                        selectedPresetId = nil
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "trash.fill")
+                                        Text("删除预设")
+                                    }
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.red.opacity(0.1))
+                                    .cornerRadius(6)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 8)
                                 
                                 Button(action: {
                                     let success = configManager.switchPreset(preset)
