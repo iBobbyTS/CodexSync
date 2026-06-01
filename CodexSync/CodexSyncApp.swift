@@ -10,7 +10,7 @@ struct CodexSyncApp: App {
             ContentView()
                 .environmentObject(configManager)
                 .environmentObject(syncEngine)
-                .frame(minWidth: 500, minHeight: 400)
+                .frame(minWidth: 1000, idealWidth: 900, minHeight: 520, idealHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
     }
