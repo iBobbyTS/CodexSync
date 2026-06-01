@@ -46,9 +46,27 @@ struct ContentView: View {
                                     Text(preset.name)
                                         .fontWeight(.medium)
                                     
-                                    Text(preset.model)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    if preset.isOfficial {
+                                        let quotaStr = configManager.accountQuotas[preset.id]
+                                        // 提取所有百分比数值，分段着色
+                                        let nums = (quotaStr ?? "").matches(of: /(\d+)%/).map { Int($0.output.1) ?? 100 }
+                                        if nums.count >= 2 {
+                                            let p = nums[0], s = nums[1]
+                                            (Text("剩余：").foregroundColor(.secondary) +
+                                             Text("5h: \(p)%").foregroundColor(p < 5 ? .red : .green) +
+                                             Text(" | ").foregroundColor(.secondary) +
+                                             Text("7d: \(s)%").foregroundColor(s < 5 ? .red : .green))
+                                                .font(.caption)
+                                        } else {
+                                            Text(quotaStr ?? preset.model)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    } else {
+                                        Text(preset.model)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                                 
                                 Spacer()

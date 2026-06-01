@@ -6,6 +6,7 @@ import SQLite3
 class ConfigManager: ObservableObject {
     @Published var state = CodexState()
     @Published var presets: [ProviderPreset] = []
+    @Published var accountQuotas: [String: String] = [:]
     
     // Codex 本地主路径
     let codexHome: URL
@@ -137,6 +138,7 @@ class ConfigManager: ObservableObject {
         }
         
         self.state = newState
+        fetchAllQuotas()
     }
     
     /// 执行预设切换
@@ -448,6 +450,86 @@ class ConfigManager: ObservableObject {
             refreshState()
         } catch {
             print("导入失败: \(error)")
+        }
+    }
+    
+    /// 异步获取所有 ChatGPT 预设的额度
+    func fetchAllQuotas() {
+        for preset in presets {
+            guard preset.isOfficial else { continue }
+            guard let authJson = preset.authJson,
+                  let authData = authJson.data(using: .utf8),
+                  let authObj = try? JSONSerialization.jsonObject(with: authData, options: []) as? [String: Any],
+                  let tokens = authObj["tokens"] as? [String: Any],
+                  let accessToken = tokens["access_token"] as? String else {
+                continue
+            }
+            
+            let accountId = tokens["account_id"] as? String
+            let presetId = preset.id
+            
+            // 异步请求
+            var request = URLRequest(url: URL(string: "https://chatgpt.com/backend-api/wham/usage")!)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("codex-cli", forHTTPHeaderField: "User-Agent")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            if let accId = accountId {
+                request.setValue(accId, forHTTPHeaderField: "ChatGPT-Account-Id")
+            }
+            
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                guard let self = self else { return }
+                guard error == nil, let data = data else {
+                    return
+                }
+                
+                // 解析 JSON
+                if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let rateLimit = dict["rate_limit"] as? [String: Any] {
+                    
+                    var primaryText = "--"
+                    var secondaryText = "--"
+                    
+                    if let primary = rateLimit["primary_window"] as? [String: Any] {
+                        // used_percent 是 0-100 的整数百分比，剩余 = 100 - used
+                        let usedPercent: Double
+                        if let v = primary["used_percent"] as? Double {
+                            usedPercent = v
+                        } else if let v = primary["used_percent"] as? Int {
+                            usedPercent = Double(v)
+                        } else {
+                            usedPercent = 0
+                        }
+                        let remaining = Int(round(100.0 - usedPercent))
+                        primaryText = "\(remaining)%"
+                    }
+                    
+                    if let secondary = rateLimit["secondary_window"] as? [String: Any] {
+                        // used_percent 是 0-100 的整数百分比，剩余 = 100 - used
+                        let usedPercent: Double
+                        if let v = secondary["used_percent"] as? Double {
+                            usedPercent = v
+                        } else if let v = secondary["used_percent"] as? Int {
+                            usedPercent = Double(v)
+                        } else {
+                            usedPercent = 0
+                        }
+                        let remaining = Int(round(100.0 - usedPercent))
+                        secondaryText = "\(remaining)%"
+                    }
+                    
+                    let quotaStr = "剩余：5h: \(primaryText) | 7d: \(secondaryText)"
+                    
+                    DispatchQueue.main.async {
+                        self.accountQuotas[presetId] = quotaStr
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.accountQuotas[presetId] = "额度获取失败"
+                    }
+                }
+            }.resume()
         }
     }
 }
