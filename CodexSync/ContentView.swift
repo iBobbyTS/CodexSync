@@ -366,7 +366,7 @@ struct ContentView: View {
                                             Text("API 密钥 (API Key)")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
-                                            SecureField("输入您的 API 密钥", text: Binding(
+                                            TextField("输入您的 API 密钥", text: Binding(
                                                 get: { preset.apiKey ?? "" },
                                                 set: { updatePresetField(index: presetIndex, apiKey: $0) }
                                             ))
@@ -480,7 +480,7 @@ struct ContentView: View {
                         HStack {
                             Text("API 密钥")
                                 .frame(width: 100, alignment: .leading)
-                            SecureField("API Key", text: $newApiKey)
+                            TextField("API Key", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
                     }
