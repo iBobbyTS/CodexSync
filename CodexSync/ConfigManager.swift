@@ -47,8 +47,8 @@ class ConfigManager: ObservableObject {
     /// 加载默认预设
     private func loadDefaultPresets() {
         self.presets = [
-            ProviderPreset(name: "官方 ChatGPT 网页账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil),
-            ProviderPreset(name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here")
+            ProviderPreset(id: UUID().uuidString, name: "官方 ChatGPT 网页账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil),
+            ProviderPreset(id: UUID().uuidString, name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here")
         ]
         savePresets()
     }
@@ -205,11 +205,16 @@ class ConfigManager: ObservableObject {
                 }
             }
             
+            // 4. 将预设加入列表，避免重复添加相同的 providerId + isOfficial 组合
+            let existingIndex = presets.firstIndex(where: { $0.providerId == providerId && $0.isOfficial == isOfficial })
+            let presetId = existingIndex.map { presets[$0].id } ?? UUID().uuidString
+            
             let preset: ProviderPreset
             
             if isOfficial {
                 // 官方网页登录模式
                 preset = ProviderPreset(
+                    id: presetId,
                     name: "导入的官方账号 (\(model))",
                     isOfficial: true,
                     providerId: "openai",
@@ -226,6 +231,7 @@ class ConfigManager: ObservableObject {
                 let apiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? authApiKey ?? ""
                 
                 preset = ProviderPreset(
+                    id: presetId,
                     name: name,
                     isOfficial: false,
                     providerId: providerId,
@@ -235,10 +241,9 @@ class ConfigManager: ObservableObject {
                 )
             }
             
-            // 4. 将预设加入列表，避免重复添加相同的 providerId + isOfficial 组合
-            if let existingIndex = presets.firstIndex(where: { $0.providerId == preset.providerId && $0.isOfficial == preset.isOfficial }) {
+            if let index = existingIndex {
                 // 覆盖已存在的同类型预设
-                presets[existingIndex] = preset
+                presets[index] = preset
             } else {
                 // 追加新预设
                 presets.append(preset)

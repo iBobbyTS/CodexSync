@@ -243,8 +243,23 @@ struct ContentView: View {
                             Text("预设详情")
                                 .font(.title2)
                                 .fontWeight(.bold)
-                            
                             Divider()
+                            
+                            HStack {
+                                Text("预设模式")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(preset.isOfficial ? "ChatGPT账号" : "API模式")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(preset.isOfficial ? .blue : .purple)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(preset.isOfficial ? Color.blue.opacity(0.1) : Color.purple.opacity(0.1))
+                                    .cornerRadius(6)
+                            }
+                            .padding(.bottom, 6)
                             
                             ScrollView {
                                 VStack(alignment: .leading, spacing: 14) {
@@ -424,6 +439,7 @@ struct ContentView: View {
                     Button("创建并保存") {
                         let provider = newIsOfficial ? "openai" : newProviderId
                         let preset = ProviderPreset(
+                            id: UUID().uuidString,
                             name: newName,
                             isOfficial: newIsOfficial,
                             providerId: provider,
@@ -494,6 +510,7 @@ struct ContentView: View {
     ) {
         let old = configManager.presets[index]
         let updated = ProviderPreset(
+            id: old.id,
             name: name ?? old.name,
             isOfficial: isOfficial ?? old.isOfficial,
             providerId: providerId ?? old.providerId,

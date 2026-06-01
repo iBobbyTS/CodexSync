@@ -2,7 +2,7 @@ import Foundation
 
 /// 预设服务商配置
 struct ProviderPreset: Identifiable, Codable, Hashable {
-    var id: String { name }
+    let id: String
     let name: String
     let isOfficial: Bool // 是否为官方网页登录模式
     let providerId: String // "openai" 或自定义 provider
