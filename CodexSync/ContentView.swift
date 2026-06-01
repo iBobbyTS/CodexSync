@@ -400,6 +400,7 @@ struct ContentView: View {
                 }
                 .frame(minWidth: 220)
             }
+            .toolbar(.hidden)
         }
         .sheet(isPresented: $showingAddSheet) {
             // 新增预设 Sheet 弹窗
