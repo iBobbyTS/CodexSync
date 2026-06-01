@@ -355,7 +355,8 @@ struct ContentView: View {
                         let isActive = configManager.state.currentProvider == preset.providerId &&
                                        (!preset.isOfficial || configManager.state.isOfficial)
                         let needsUpdate = preset.isOfficial && isPresetMatchingCurrentAccount(preset) && presetNeedsUpdate(preset)
-                        let isButtonDisabled = isActive && !needsUpdate
+                        let isAuthJsonInvalid = preset.isOfficial && jsonValidationError(preset.authJson ?? "") != nil
+                        let isButtonDisabled = (isActive && !needsUpdate) || isAuthJsonInvalid
                         
                         VStack(alignment: .leading, spacing: 20) {
                             HStack(alignment: .center) {
@@ -482,6 +483,13 @@ struct ContentView: View {
                                                 RoundedRectangle(cornerRadius: 6)
                                                     .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                                             )
+                                            
+                                            if let errorMsg = jsonValidationError(preset.authJson ?? "") {
+                                                Text("⚠️ JSON 格式错误: \(errorMsg)")
+                                                    .font(.caption)
+                                                    .foregroundColor(.red)
+                                                    .padding(.top, 2)
+                                            }
                                         }
                                     } else {
                                         Group {
@@ -601,6 +609,13 @@ struct ContentView: View {
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                                 )
+                            
+                            if let errorMsg = jsonValidationError(newAuthJson) {
+                                Text("⚠️ JSON 格式错误: \(errorMsg)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.top, 2)
+                            }
                         }
                     } else {
                         HStack {
@@ -646,7 +661,10 @@ struct ContentView: View {
                         showingAddSheet = false
                     }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(
+                        newName.trimmingCharacters(in: .whitespaces).isEmpty ||
+                        (newIsOfficial && jsonValidationError(newAuthJson) != nil)
+                    )
                 }
             }
             .padding(20)
@@ -729,6 +747,20 @@ struct ContentView: View {
     }
     
     // MARK: - 预设更新与校验助手
+    
+    private func jsonValidationError(_ string: String) -> String? {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        guard let data = trimmed.data(using: .utf8) else {
+            return "编码非 UTF-8"
+        }
+        do {
+            _ = try JSONSerialization.jsonObject(with: data, options: [])
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
     
     private func getAccountIdFromAuthJson(_ jsonStr: String?) -> String? {
         guard let data = jsonStr?.data(using: .utf8),
