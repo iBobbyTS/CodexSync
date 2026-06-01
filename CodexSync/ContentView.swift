@@ -15,6 +15,10 @@ struct ContentView: View {
     @State private var newBaseUrl = ""
     @State private var newApiKey = ""
     
+    // 导入当前活动配置相关状态
+    @State private var showingImportAlert = false
+    @State private var importAlertMessage = ""
+    
     var body: some View {
         NavigationSplitView {
             // 左侧边栏：预设列表
@@ -62,20 +66,33 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 // 左下角操作栏
-                HStack {
+                HStack(spacing: 12) {
                     Button(action: {
                         resetAddSheetFields()
                         showingAddSheet = true
                     }) {
-                        Image(systemName: "plus")
-                        Text("添加预设")
+                        Label("添加预设", systemImage: "plus")
                     }
                     .buttonStyle(.plain)
-                    .padding(12)
+                    .foregroundColor(.accentColor)
+                    
+                    Divider()
+                        .frame(height: 12)
+                    
+                    Button(action: {
+                        let res = configManager.importCurrentConfigAsPreset()
+                        importAlertMessage = res.message
+                        showingImportAlert = true
+                    }) {
+                        Label("导入当前配置", systemImage: "arrow.down.doc")
+                    }
+                    .buttonStyle(.plain)
                     .foregroundColor(.accentColor)
                     
                     Spacer()
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
                 .background(.ultraThinMaterial)
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
@@ -425,6 +442,11 @@ struct ContentView: View {
             }
             .padding(20)
             .frame(width: 440)
+        }
+        .alert("配置导入", isPresented: $showingImportAlert) {
+            Button("好", role: .cancel) { }
+        } message: {
+            Text(importAlertMessage)
         }
         .onAppear {
             configManager.refreshState()

@@ -174,6 +174,85 @@ class ConfigManager: ObservableObject {
         }
     }
     
+    
+    /// 从当前用户 .codex 实际配置中读取并导入为一个预设卡片
+    func importCurrentConfigAsPreset() -> (success: Bool, message: String) {
+        // 1. 检查是否存在 config.toml
+        guard FileManager.default.fileExists(atPath: configURL.path) else {
+            return (false, "本地配置文件 config.toml 不存在")
+        }
+        
+        do {
+            let tomlText = try String(contentsOf: configURL, encoding: .utf8)
+            let editor = TomlEditor(text: tomlText)
+            
+            // 2. 读取必要的路由字段
+            let providerId = editor.getValue(forKey: "model_provider") ?? "openai"
+            let model = editor.getValue(forKey: "model") ?? "gpt-4o"
+            
+            // 3. 读取 auth.json 判别是否是官方网页登录模式
+            var isOfficial = (providerId == "openai")
+            var authApiKey: String? = nil
+            
+            if FileManager.default.fileExists(atPath: authURL.path) {
+                let authData = try Data(contentsOf: authURL)
+                if let authObj = try? JSONSerialization.jsonObject(with: authData, options: []) as? [String: Any] {
+                    let authMode = authObj["auth_mode"] as? String
+                    if authMode == "chatgpt" {
+                        isOfficial = true
+                    }
+                    authApiKey = authObj["OPENAI_API_KEY"] as? String
+                }
+            }
+            
+            let preset: ProviderPreset
+            
+            if isOfficial {
+                // 官方网页登录模式
+                preset = ProviderPreset(
+                    name: "导入的官方账号 (\(model))",
+                    isOfficial: true,
+                    providerId: "openai",
+                    model: model,
+                    baseUrl: nil,
+                    apiKey: nil
+                )
+            } else {
+                // API 密钥登录模式
+                // 优先从对应的 model_providers.<providerId> 表中读取，没有则回退到 top-level
+                let sectionName = "model_providers.\(providerId)"
+                let name = editor.getValue(forKey: "name", inSection: sectionName) ?? "导入的预设 (\(providerId))"
+                let baseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url") ?? "https://api.openai.com/v1"
+                let apiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? authApiKey ?? ""
+                
+                preset = ProviderPreset(
+                    name: name,
+                    isOfficial: false,
+                    providerId: providerId,
+                    model: model,
+                    baseUrl: baseUrl,
+                    apiKey: apiKey
+                )
+            }
+            
+            // 4. 将预设加入列表，避免重复添加相同的 providerId + isOfficial 组合
+            if let existingIndex = presets.firstIndex(where: { $0.providerId == preset.providerId && $0.isOfficial == preset.isOfficial }) {
+                // 覆盖已存在的同类型预设
+                presets[existingIndex] = preset
+            } else {
+                // 追加新预设
+                presets.append(preset)
+            }
+            
+            savePresets()
+            refreshState()
+            return (true, "已成功导入「\(preset.name)」并添加至列表！")
+            
+        } catch {
+            return (false, "导入失败: \(error.localizedDescription)")
+        }
+    }
+    
     /// 本地 SQLite 状态的快速轻量级只读查询（无需完整连接 SyncEngine）
     private func queryDatabaseStats(dbPath: String, currentProvider: String, currentModel: String) -> (total: Int, movable: Int) {
         var db: OpaquePointer?
