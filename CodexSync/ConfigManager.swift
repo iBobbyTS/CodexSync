@@ -205,50 +205,47 @@ class ConfigManager: ObservableObject {
                 }
             }
             
-            // 4. 将预设加入列表，避免重复添加相同的 providerId + isOfficial 组合
-            let existingIndex = presets.firstIndex(where: { $0.providerId == providerId && $0.isOfficial == isOfficial })
-            let presetId = existingIndex.map { presets[$0].id } ?? UUID().uuidString
-            
-            let preset: ProviderPreset
+            // 4. 读取该配置下的详细字段
+            let presetName: String
+            let presetBaseUrl: String?
+            let presetApiKey: String?
             
             if isOfficial {
-                // 官方网页登录模式
-                preset = ProviderPreset(
-                    id: presetId,
-                    name: "导入的官方账号 (\(model))",
-                    isOfficial: true,
-                    providerId: "openai",
-                    model: model,
-                    baseUrl: nil,
-                    apiKey: nil
-                )
+                presetName = "导入的官方账号 (\(model))"
+                presetBaseUrl = nil
+                presetApiKey = nil
             } else {
-                // API 密钥登录模式
-                // 优先从对应的 model_providers.<providerId> 表中读取，没有则回退到 top-level
                 let sectionName = "model_providers.\(providerId)"
-                let name = editor.getValue(forKey: "name", inSection: sectionName) ?? "导入的预设 (\(providerId))"
-                let baseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url") ?? "https://api.openai.com/v1"
-                let apiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? authApiKey ?? ""
-                
-                preset = ProviderPreset(
-                    id: presetId,
-                    name: name,
-                    isOfficial: false,
-                    providerId: providerId,
-                    model: model,
-                    baseUrl: baseUrl,
-                    apiKey: apiKey
-                )
+                presetName = editor.getValue(forKey: "name", inSection: sectionName) ?? "导入的预设 (\(providerId))"
+                presetBaseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url") ?? "https://api.openai.com/v1"
+                presetApiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? authApiKey ?? ""
             }
             
-            if let index = existingIndex {
-                // 覆盖已存在的同类型预设
-                presets[index] = preset
-            } else {
-                // 追加新预设
-                presets.append(preset)
+            // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，忽略显示名称）
+            let matchedPreset = presets.first {
+                $0.providerId == providerId &&
+                $0.isOfficial == isOfficial &&
+                $0.model == model &&
+                ($0.baseUrl ?? "") == (presetBaseUrl ?? "") &&
+                ($0.apiKey ?? "") == (presetApiKey ?? "")
             }
             
+            if let existing = matchedPreset {
+                return (true, "当前活动配置已存在于预设列表中（「\(existing.name)」），无需重复导入。")
+            }
+            
+            // 6. 不存在，则作为新预设追加在列表尾部
+            let preset = ProviderPreset(
+                id: UUID().uuidString,
+                name: presetName,
+                isOfficial: isOfficial,
+                providerId: providerId,
+                model: model,
+                baseUrl: presetBaseUrl,
+                apiKey: presetApiKey
+            )
+            
+            presets.append(preset)
             savePresets()
             refreshState()
             return (true, "已成功导入「\(preset.name)」并添加至列表！")
