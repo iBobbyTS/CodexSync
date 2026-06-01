@@ -405,11 +405,21 @@ struct ContentView: View {
                     HStack {
                         Text("预设名称")
                             .frame(width: 100, alignment: .leading)
-                        TextField("例如: DeepSeek API", text: $newName)
+                        TextField(newIsOfficial ? "例如: 个人账号" : "例如: Pixel API", text: $newName)
                             .textFieldStyle(.roundedBorder)
                     }
                     
-                    Picker("模式类型", selection: $newIsOfficial) {
+                    Picker("模式类型", selection: Binding(
+                        get: { newIsOfficial },
+                        set: { newValue in
+                            newIsOfficial = newValue
+                            if newValue {
+                                newProviderId = "openai"
+                            } else if newProviderId == "openai" {
+                                newProviderId = "custom"
+                            }
+                        }
+                    )) {
                         Text("第三方 API 密钥登录").tag(false)
                         Text("官方 ChatGPT 网页登录").tag(true)
                     }
