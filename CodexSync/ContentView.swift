@@ -669,6 +669,9 @@ struct ContentView: View {
             }
             .padding(20)
             .frame(width: 440)
+            .onDisappear {
+                resetAddSheetFields()
+            }
         }
         .alert("配置导入", isPresented: $showingImportAlert) {
             Button("好", role: .cancel) { }
@@ -713,6 +716,7 @@ struct ContentView: View {
         newModel = "gpt-4o"
         newBaseUrl = ""
         newApiKey = ""
+        newAuthJson = ""
     }
     
     private func updatePresetField(
