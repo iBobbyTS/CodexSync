@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var newModel = "gpt-4o"
     @State private var newBaseUrl = ""
     @State private var newApiKey = ""
+    @State private var newAuthJson = ""
     
     // 导入当前活动配置相关状态
     @State private var showingImportAlert = false
@@ -297,7 +298,24 @@ struct ContentView: View {
                                         .textFieldStyle(.roundedBorder)
                                     }
                                     
-                                    if !preset.isOfficial {
+                                    if preset.isOfficial {
+                                        Group {
+                                            Text("auth.json 内容 (JSON 字符串)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            TextEditor(text: Binding(
+                                                get: { preset.authJson ?? "" },
+                                                set: { updatePresetField(index: presetIndex, authJson: $0) }
+                                            ))
+                                            .font(.system(.body, design: .monospaced))
+                                            .frame(height: 120)
+                                            .cornerRadius(6)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                            )
+                                        }
+                                    } else {
                                         Group {
                                             Text("接口地址 (Base URL)")
                                                 .font(.caption)
@@ -410,7 +428,21 @@ struct ContentView: View {
                             .textFieldStyle(.roundedBorder)
                     }
                     
-                    if !newIsOfficial {
+                    if newIsOfficial {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("auth.json 内容 (JSON 字符串)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextEditor(text: $newAuthJson)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(height: 120)
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                        }
+                    } else {
                         HStack {
                             Text("接口端点")
                                 .frame(width: 100, alignment: .leading)
@@ -445,7 +477,8 @@ struct ContentView: View {
                             providerId: provider,
                             model: newModel,
                             baseUrl: newIsOfficial ? nil : newBaseUrl,
-                            apiKey: newIsOfficial ? nil : newApiKey
+                            apiKey: newIsOfficial ? nil : newApiKey,
+                            authJson: newIsOfficial ? newAuthJson : nil
                         )
                         configManager.presets.append(preset)
                         configManager.savePresets()
@@ -506,7 +539,8 @@ struct ContentView: View {
         providerId: String? = nil,
         model: String? = nil,
         baseUrl: String? = nil,
-        apiKey: String? = nil
+        apiKey: String? = nil,
+        authJson: String? = nil
     ) {
         let old = configManager.presets[index]
         let updated = ProviderPreset(
@@ -516,7 +550,8 @@ struct ContentView: View {
             providerId: providerId ?? old.providerId,
             model: model ?? old.model,
             baseUrl: baseUrl ?? old.baseUrl,
-            apiKey: apiKey ?? old.apiKey
+            apiKey: apiKey ?? old.apiKey,
+            authJson: authJson ?? old.authJson
         )
         configManager.presets[index] = updated
         configManager.savePresets()

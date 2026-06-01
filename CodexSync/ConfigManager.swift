@@ -47,8 +47,8 @@ class ConfigManager: ObservableObject {
     /// 加载默认预设
     private func loadDefaultPresets() {
         self.presets = [
-            ProviderPreset(id: UUID().uuidString, name: "官方 ChatGPT 网页账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil),
-            ProviderPreset(id: UUID().uuidString, name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here")
+            ProviderPreset(id: UUID().uuidString, name: "官方 ChatGPT 网页账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil, authJson: nil),
+            ProviderPreset(id: UUID().uuidString, name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here", authJson: nil)
         ]
         savePresets()
     }
@@ -143,8 +143,10 @@ class ConfigManager: ObservableObject {
                 editor.setValue(nil, forKey: "base_url", inSection: "model_providers.\(preset.providerId)")
                 editor.setValue(nil, forKey: "experimental_bearer_token", inSection: "model_providers.\(preset.providerId)")
                 
-                // 如果 auth.json 不存在，初始化一个标准的网页模式空框架
-                if !FileManager.default.fileExists(atPath: authURL.path) {
+                // 写入或初始化 auth.json 网页登录态
+                if let authJsonStr = preset.authJson, !authJsonStr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    try authJsonStr.write(to: authURL, atomically: true, encoding: .utf8)
+                } else if !FileManager.default.fileExists(atPath: authURL.path) {
                     let initialAuth: [String: Any] = ["auth_mode": "chatgpt"]
                     let authData = try JSONSerialization.data(withJSONObject: initialAuth, options: [.prettyPrinted])
                     try authData.write(to: authURL, options: .atomic)
@@ -209,20 +211,27 @@ class ConfigManager: ObservableObject {
             let presetName: String
             let presetBaseUrl: String?
             let presetApiKey: String?
+            let presetAuthJson: String?
             
             if isOfficial {
                 presetName = "导入的官方账号 (\(model))"
                 presetBaseUrl = nil
                 presetApiKey = nil
+                if FileManager.default.fileExists(atPath: authURL.path) {
+                    presetAuthJson = try? String(contentsOf: authURL, encoding: .utf8)
+                } else {
+                    presetAuthJson = nil
+                }
             } else {
                 let sectionName = "model_providers.\(providerId)"
                 presetName = editor.getValue(forKey: "name", inSection: sectionName) ?? "导入的预设 (\(providerId))"
                 presetBaseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url") ?? "https://api.openai.com/v1"
                 presetApiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? authApiKey ?? ""
+                presetAuthJson = nil
             }
             
             // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，忽略显示名称）
-            let matchedPreset = presets.first {
+            let matchedIndex = presets.firstIndex {
                 $0.providerId == providerId &&
                 $0.isOfficial == isOfficial &&
                 $0.model == model &&
@@ -230,8 +239,23 @@ class ConfigManager: ObservableObject {
                 ($0.apiKey ?? "") == (presetApiKey ?? "")
             }
             
-            if let existing = matchedPreset {
-                return (true, "当前活动配置已存在于预设列表中（「\(existing.name)」），无需重复导入。")
+            if let index = matchedIndex {
+                let old = presets[index]
+                // 覆盖更新 auth.json 登录凭证，并保留用户修改的名字和原 ID
+                let updated = ProviderPreset(
+                    id: old.id,
+                    name: old.name,
+                    isOfficial: old.isOfficial,
+                    providerId: old.providerId,
+                    model: old.model,
+                    baseUrl: old.baseUrl,
+                    apiKey: old.apiKey,
+                    authJson: presetAuthJson
+                )
+                presets[index] = updated
+                savePresets()
+                refreshState()
+                return (true, "当前配置已在列表中（「\(old.name)」），已成功同步最新的 auth.json 登录凭证！")
             }
             
             // 6. 不存在，则作为新预设追加在列表尾部
@@ -242,7 +266,8 @@ class ConfigManager: ObservableObject {
                 providerId: providerId,
                 model: model,
                 baseUrl: presetBaseUrl,
-                apiKey: presetApiKey
+                apiKey: presetApiKey,
+                authJson: presetAuthJson
             )
             
             presets.append(preset)
