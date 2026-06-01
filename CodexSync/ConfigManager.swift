@@ -47,7 +47,7 @@ class ConfigManager: ObservableObject {
     /// 加载默认预设
     private func loadDefaultPresets() {
         self.presets = [
-            ProviderPreset(id: UUID().uuidString, name: "ChatGPT账号", isOfficial: true, providerId: "openai", model: "gpt-4o", baseUrl: nil, apiKey: nil, authJson: nil),
+            ProviderPreset(id: UUID().uuidString, name: "ChatGPT账号", isOfficial: true, providerId: "openai", model: "gpt-5.5", baseUrl: nil, apiKey: nil, authJson: nil),
             ProviderPreset(id: UUID().uuidString, name: "自定义 API 模式 (DeepSeek)", isOfficial: false, providerId: "deepseek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1", apiKey: "sk-your-key-here", authJson: nil)
         ]
         savePresets()
@@ -211,7 +211,7 @@ class ConfigManager: ObservableObject {
             
             // 2. 读取必要的路由字段
             let providerId = editor.getValue(forKey: "model_provider") ?? "openai"
-            let model = editor.getValue(forKey: "model") ?? "gpt-4o"
+            let model = editor.getValue(forKey: "model") ?? "gpt-5.5"
             
             // 3. 读取 auth.json 判别是否是官方网页登录模式
             var isOfficial = (providerId == "openai")
@@ -389,7 +389,7 @@ class ConfigManager: ObservableObject {
             let editor = TomlEditor(text: tomlText)
             
             let providerId = editor.getValue(forKey: "model_provider") ?? "openai"
-            let model = editor.getValue(forKey: "model") ?? "gpt-4o"
+            let model = editor.getValue(forKey: "model") ?? "gpt-5.5"
             
             var isOfficial = (providerId == "openai")
             if FileManager.default.fileExists(atPath: authURL.path) {

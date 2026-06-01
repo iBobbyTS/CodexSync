@@ -13,7 +13,7 @@ struct ContentView: View {
     @State private var newName = ""
     @State private var newIsOfficial = false
     @State private var newProviderId = "custom"
-    @State private var newModel = "gpt-4o"
+    @State private var newModel = "gpt-5.5"
     @State private var newBaseUrl = ""
     @State private var newApiKey = ""
     @State private var newAuthJson = ""
@@ -718,7 +718,7 @@ struct ContentView: View {
         newName = ""
         newIsOfficial = false
         newProviderId = "custom"
-        newModel = "gpt-4o"
+        newModel = "gpt-5.5"
         newBaseUrl = ""
         newApiKey = ""
         newAuthJson = ""
