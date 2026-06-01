@@ -370,10 +370,10 @@ struct ContentView: View {
                                             .textFieldStyle(.roundedBorder)
                                         }
                                     }
-                                    
-                                    // 底部一键应用按钮已重构移动至右上角“预设详情”头部右侧
                                 }
+                                .padding(.horizontal, 4)
                             }
+                            .padding(.horizontal, -4)
                             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                         }
                         .padding(20)
