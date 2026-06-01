@@ -4,6 +4,8 @@ struct ContentView: View {
     @EnvironmentObject var configManager: ConfigManager
     @EnvironmentObject var syncEngine: SyncEngine
     
+    @Environment(\.controlActiveState) var controlActiveState
+    
     @State private var selectedPresetId: String? = nil
     @State private var showingAddSheet = false
     
@@ -519,6 +521,11 @@ struct ContentView: View {
         }
         .onAppear {
             configManager.refreshState()
+        }
+        .onChange(of: controlActiveState) { oldValue, newValue in
+            if newValue == .key {
+                configManager.refreshState()
+            }
         }
     }
     
