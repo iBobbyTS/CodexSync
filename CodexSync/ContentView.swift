@@ -21,7 +21,7 @@ struct ContentView: View {
     // 隐藏/显示秘钥与auth.json的状态控制
     @State private var showAuthJson = false
     @State private var showApiKey = false
-    @State private var showNewAuthJson = false
+    @State private var showNewAuthJson = true
     @State private var showNewApiKey = false
     
     // 导入当前活动配置相关状态
@@ -352,7 +352,7 @@ struct ContentView: View {
                                 .shadow(color: configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
                             }
                             .buttonStyle(.plain)
-                            .disabled(syncEngine.isSyncing)
+                            .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
                         }
                         
                         // 提示与错误信息
@@ -370,6 +370,74 @@ struct ContentView: View {
                                 .padding(8)
                                 .background(Color.green.opacity(0.1))
                                 .cornerRadius(6)
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 2)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Label("残留幽灵会话清理", systemImage: "trash.fill")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                
+                                Button(action: {
+                                    syncEngine.cleanGhostSessions { success in
+                                        if success {
+                                            configManager.refreshState()
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "trash")
+                                        Text("立即清理")
+                                    }
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(syncEngine.isCleaning ? .secondary : .red)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(syncEngine.isCleaning ? Color.gray.opacity(0.1) : Color.red.opacity(0.08))
+                                    .cornerRadius(6)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(syncEngine.isCleaning || syncEngine.isSyncing)
+                            }
+                            
+                            Text("若您在磁盘中手动删除了会话 JSONL 文件，此功能可帮您一键清空数据库中无用的幽灵残留记录。")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            if syncEngine.isCleaning {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .controlSize(.small)
+                                    Text(syncEngine.progressMessage)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.top, 4)
+                            } else if let cleanErr = syncEngine.cleanError {
+                                Text("⚠️ 清理失败: \(cleanErr)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(6)
+                                    .background(Color.red.opacity(0.08))
+                                    .cornerRadius(6)
+                                    .padding(.top, 2)
+                            } else if syncEngine.cleanSuccess {
+                                Text("✨ " + syncEngine.progressMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                    .padding(6)
+                                    .background(Color.green.opacity(0.08))
+                                    .cornerRadius(6)
+                                    .padding(.top, 2)
+                            }
                         }
                     }
                     .padding(20)
@@ -884,7 +952,7 @@ struct ContentView: View {
         newBaseUrl = ""
         newApiKey = ""
         newAuthJson = ""
-        showNewAuthJson = false
+        showNewAuthJson = true
         showNewApiKey = false
     }
     

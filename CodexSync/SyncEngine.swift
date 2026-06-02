@@ -9,6 +9,10 @@ class SyncEngine: ObservableObject {
     @Published var syncError: String? = nil
     @Published var syncSuccess = false
     
+    @Published var isCleaning = false
+    @Published var cleanError: String? = nil
+    @Published var cleanSuccess = false
+    
     let codexHome: URL
     let dbURL: URL
     let backupDir: URL
@@ -155,13 +159,14 @@ class SyncEngine: ObservableObject {
                 var updateStmt: OpaquePointer?
                 let prepareResult = sqlite3_prepare_v2(db, querySql, -1, &updateStmt, nil)
                 if prepareResult == SQLITE_OK {
-                    sqlite3_bind_text(updateStmt, 1, provider, -1, nil)
+                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    sqlite3_bind_text(updateStmt, 1, provider, -1, SQLITE_TRANSIENT)
                     if hasModelColumn {
-                        sqlite3_bind_text(updateStmt, 2, model, -1, nil)
-                        sqlite3_bind_text(updateStmt, 3, provider, -1, nil)
-                        sqlite3_bind_text(updateStmt, 4, model, -1, nil)
+                        sqlite3_bind_text(updateStmt, 2, model, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(updateStmt, 3, provider, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(updateStmt, 4, model, -1, SQLITE_TRANSIENT)
                     } else {
-                        sqlite3_bind_text(updateStmt, 2, provider, -1, nil)
+                        sqlite3_bind_text(updateStmt, 2, provider, -1, SQLITE_TRANSIENT)
                     }
                     
                     let stepResult = sqlite3_step(updateStmt)
@@ -372,5 +377,172 @@ class SyncEngine: ObservableObject {
         try indexContent.write(to: sessionIndexURL, atomically: true, encoding: .utf8)
         
         return mergedEntries.count
+    }
+    
+    /// 清理数据库中不存在物理文件的残留幽灵会话记录
+    func cleanGhostSessions(completion: @escaping (Bool) -> Void) {
+        self.isCleaning = true
+        self.cleanError = nil
+        self.cleanSuccess = false
+        self.progressMessage = "正在准备安全备份..."
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                // 1. 创建安全备份
+                let backupURL = try self.makeSafetyBackup()
+                print("安全备份已创建: \(backupURL.path)")
+                
+                // 2. 扫描物理会话文件获取所有合法的 UUID
+                DispatchQueue.main.async {
+                    self.progressMessage = "正在扫描物理会话文件..."
+                }
+                let activeUUIDs = try self.scanExistingSessionUUIDs()
+                
+                // 3. 执行数据库删除操作
+                DispatchQueue.main.async {
+                    self.progressMessage = "正在清理数据库残留记录..."
+                }
+                let deletedCount = try self.executeDeleteGhostSessionsInDatabase(existingUUIDs: activeUUIDs)
+                
+                DispatchQueue.main.async {
+                    self.isCleaning = false
+                    self.cleanSuccess = true
+                    self.progressMessage = "清理成功！已从数据库清除 \(deletedCount) 个残留的幽灵会话记录。"
+                    completion(true)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isCleaning = false
+                    self.cleanError = error.localizedDescription
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    /// 遍历 sessions 和 archived_sessions 目录，提取所有物理会话的 UUID 集合
+    private func scanExistingSessionUUIDs() throws -> Set<String> {
+        var uuids = Set<String>()
+        let fm = FileManager.default
+        
+        // 匹配标准 UUID 格式
+        let uuidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        guard let regex = try? NSRegularExpression(pattern: uuidPattern, options: []) else {
+            throw NSError(domain: "CodexSync", code: 500, userInfo: [NSLocalizedDescriptionKey: "无法初始化正则表达式"])
+        }
+        
+        func scanDirectory(_ dir: URL) {
+            guard fm.fileExists(atPath: dir.path) else { return }
+            if let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+                let jsonlFiles = files.filter { $0.lastPathComponent.hasPrefix("rollout-") && $0.pathExtension == "jsonl" }
+                for fileURL in jsonlFiles {
+                    let filename = fileURL.lastPathComponent
+                    let nsString = filename as NSString
+                    let results = regex.matches(in: filename, options: [], range: NSRange(location: 0, length: nsString.length))
+                    // UUID 通常在 rollout-yyyyMMdd-HHmmss-[UUID].jsonl 文件名的末尾
+                    if let match = results.last {
+                        let uuid = nsString.substring(with: match.range).lowercased()
+                        uuids.insert(uuid)
+                    }
+                }
+            }
+        }
+        
+        scanDirectory(sessionsDir)
+        let archivedSessionsDir = codexHome.appendingPathComponent("archived_sessions")
+        scanDirectory(archivedSessionsDir)
+        
+        return uuids
+    }
+    
+    /// 在 SQLite 事务中安全对比并删除幽灵记录，包含写锁安全重试
+    private func executeDeleteGhostSessionsInDatabase(existingUUIDs: Set<String>) throws -> Int {
+        var db: OpaquePointer?
+        let dbPath = dbURL.path
+        
+        let openResult = sqlite3_open_v2(dbPath, &db, SQLITE_OPEN_READWRITE, nil)
+        guard openResult == SQLITE_OK else {
+            throw NSError(domain: "SQLite", code: Int(openResult), userInfo: [NSLocalizedDescriptionKey: "无法打开数据库"])
+        }
+        defer {
+            sqlite3_close(db)
+        }
+        
+        // 30 秒超时
+        sqlite3_busy_timeout(db, 30000)
+        
+        // 1. 查询当前 threads 表中所有的 id
+        var stmt: OpaquePointer?
+        var dbIds: [String] = []
+        
+        if sqlite3_prepare_v2(db, "SELECT id FROM threads", -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let idBytes = sqlite3_column_text(stmt, 0) {
+                    dbIds.append(String(cString: idBytes).lowercased())
+                }
+            }
+            sqlite3_finalize(stmt)
+        }
+        
+        // 2. 筛选出数据库中有但物理文件已经不存在的残留 ID
+        let ghostIds = dbIds.filter { !existingUUIDs.contains($0) }
+        
+        guard !ghostIds.isEmpty else {
+            return 0
+        }
+        
+        // 3. 循环等待写锁并启动 IMMEDIATE 写事务批量删除
+        var attempts = 0
+        let maxAttempts = 40
+        let retryDelayMicroseconds: useconds_t = 250_000 // 0.25 秒
+        
+        while attempts < maxAttempts {
+            attempts += 1
+            
+            let beginResult = sqlite3_exec(db, "BEGIN IMMEDIATE;", nil, nil, nil)
+            if beginResult == SQLITE_OK {
+                var deleteStmt: OpaquePointer?
+                let deleteSql = "DELETE FROM threads WHERE id = ?"
+                
+                if sqlite3_prepare_v2(db, deleteSql, -1, &deleteStmt, nil) == SQLITE_OK {
+                    var deletedSuccessfully = true
+                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    var actualDeletedRows = 0
+                    
+                    for ghostId in ghostIds {
+                        sqlite3_bind_text(deleteStmt, 1, ghostId, -1, SQLITE_TRANSIENT)
+                        let stepResult = sqlite3_step(deleteStmt)
+                        actualDeletedRows += Int(sqlite3_changes(db))
+                        sqlite3_reset(deleteStmt)
+                        
+                        if stepResult != SQLITE_DONE {
+                            deletedSuccessfully = false
+                            break
+                        }
+                    }
+                    
+                    sqlite3_finalize(deleteStmt)
+                    
+                    if deletedSuccessfully {
+                        let commitResult = sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+                        if commitResult == SQLITE_OK {
+                            // WAL checkpoint 物理刷盘
+                            sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
+                            return actualDeletedRows
+                        } else {
+                            sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+                        }
+                    } else {
+                        sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+                    }
+                } else {
+                    sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+                }
+            }
+            
+            usleep(retryDelayMicroseconds)
+        }
+        
+        throw NSError(domain: "SQLite", code: 5, userInfo: [NSLocalizedDescriptionKey: "数据库被 Codex 占用中，获取写锁超时。请确保 Codex 没有在回复或自动保存，然后再试。"])
     }
 }
