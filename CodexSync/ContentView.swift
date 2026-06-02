@@ -825,6 +825,24 @@ struct ContentView: View {
         }
         .onAppear {
             configManager.refreshState()
+            
+            // 默认选中当前 active 预设，没有的话选择第一个
+            if let activePreset = configManager.presets.first(where: { preset in
+                let providerMatch = configManager.state.currentProvider == preset.providerId
+                if preset.isOfficial {
+                    return providerMatch && configManager.state.isOfficial && isPresetMatchingCurrentAccount(preset)
+                } else {
+                    return providerMatch && !configManager.state.isOfficial
+                }
+            }) {
+                selectedPresetId = activePreset.id
+            } else if let fallbackActivePreset = configManager.presets.first(where: { preset in
+                configManager.state.currentProvider == preset.providerId && (!preset.isOfficial || configManager.state.isOfficial)
+            }) {
+                selectedPresetId = fallbackActivePreset.id
+            } else if let firstPreset = configManager.presets.first {
+                selectedPresetId = firstPreset.id
+            }
         }
         .onChange(of: controlActiveState) { oldValue, newValue in
             if newValue == .key {
