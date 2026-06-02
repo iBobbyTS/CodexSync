@@ -523,7 +523,7 @@ struct ContentView: View {
                                                     get: { preset.authJson ?? "" },
                                                     set: { updatePresetField(index: presetIndex, authJson: $0) }
                                                 ))
-                                                .frame(height: 120)
+                                                .frame(height: 170)
                                                 .padding(4)
                                                 .background(Color(NSColor.controlBackgroundColor))
                                                 .cornerRadius(6)
@@ -551,7 +551,7 @@ struct ContentView: View {
                                                     }
                                                     Spacer()
                                                 }
-                                                .frame(height: 120)
+                                                .frame(height: 170)
                                                 .background(Color(NSColor.controlBackgroundColor))
                                                 .cornerRadius(6)
                                                 .overlay(
@@ -701,7 +701,7 @@ struct ContentView: View {
                             
                             if showNewAuthJson {
                                 MacCodeEditor(text: $newAuthJson)
-                                    .frame(height: 120)
+                                    .frame(height: 170)
                                     .padding(4)
                                     .background(Color(NSColor.controlBackgroundColor))
                                     .cornerRadius(6)
@@ -734,7 +734,7 @@ struct ContentView: View {
                                     }
                                     Spacer()
                                 }
-                                .frame(height: 120)
+                                .frame(height: 170)
                                 .background(Color(NSColor.controlBackgroundColor))
                                 .cornerRadius(6)
                                 .overlay(
