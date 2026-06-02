@@ -8,6 +8,8 @@ class ConfigManager: ObservableObject {
     @Published var presets: [ProviderPreset] = []
     @Published var accountQuotas: [String: String] = [:]
     
+    private var detectionTasks: [String: Task<Void, Never>] = [:]
+    
     // Codex 本地主路径
     let codexHome: URL
     let configURL: URL
@@ -273,7 +275,8 @@ class ConfigManager: ObservableObject {
                     model: old.model,
                     baseUrl: old.baseUrl,
                     apiKey: old.apiKey,
-                    authJson: presetAuthJson
+                    authJson: presetAuthJson,
+                    detectedBalanceProvider: old.detectedBalanceProvider
                 )
                 presets[index] = updated
                 savePresets()
@@ -290,12 +293,18 @@ class ConfigManager: ObservableObject {
                 model: model,
                 baseUrl: presetBaseUrl,
                 apiKey: presetApiKey,
-                authJson: presetAuthJson
+                authJson: presetAuthJson,
+                detectedBalanceProvider: nil
             )
             
             presets.append(preset)
             savePresets()
             refreshState()
+            
+            if !isOfficial {
+                detectAndSaveBalanceProvider(for: preset, debounce: false)
+            }
+            
             return (true, "已成功导入「\(preset.name)」并添加至列表！")
             
         } catch {
@@ -374,7 +383,8 @@ class ConfigManager: ObservableObject {
                 model: old.model,
                 baseUrl: old.baseUrl,
                 apiKey: old.apiKey,
-                authJson: authJsonStr
+                authJson: authJsonStr,
+                detectedBalanceProvider: old.detectedBalanceProvider
             )
             presets[index] = updated
             savePresets()
@@ -415,7 +425,8 @@ class ConfigManager: ObservableObject {
                     model: model,
                     baseUrl: nil,
                     apiKey: nil,
-                    authJson: authJsonStr
+                    authJson: authJsonStr,
+                    detectedBalanceProvider: nil
                 )
             } else {
                 let sectionName = "model_providers.\(providerId)"
@@ -441,13 +452,18 @@ class ConfigManager: ObservableObject {
                     model: model,
                     baseUrl: baseUrl,
                     apiKey: apiKey,
-                    authJson: nil
+                    authJson: nil,
+                    detectedBalanceProvider: nil
                 )
             }
             
             presets.append(preset)
             savePresets()
             refreshState()
+            
+            if !isOfficial {
+                detectAndSaveBalanceProvider(for: preset, debounce: false)
+            }
         } catch {
             print("导入失败: \(error)")
         }
@@ -532,87 +548,73 @@ class ConfigManager: ObservableObject {
             }.resume()
         }
         
-        // API 模式余额查询：对每个非官方预设调用 {baseUrl}/v1/usage
+        // API 模式余额查询：使用已探测的供应商类型
         for preset in presets {
             guard !preset.isOfficial else { continue }
             guard let baseUrl = preset.baseUrl, !baseUrl.isEmpty,
                   let apiKey = preset.apiKey, !apiKey.isEmpty else { continue }
-            
-            // 构造 {baseUrl}/v1/usage，确保不重复拼接 /v1
-            let normalizedBase = baseUrl.hasSuffix("/") ? String(baseUrl.dropLast()) : baseUrl
-            let usageUrlStr: String
-            if normalizedBase.hasSuffix("/v1") {
-                usageUrlStr = normalizedBase + "/usage"
-            } else {
-                usageUrlStr = normalizedBase + "/v1/usage"
-            }
-            guard let usageUrl = URL(string: usageUrlStr) else { continue }
+            guard let providerRaw = preset.detectedBalanceProvider,
+                  let providerType = BalanceProviderType(rawValue: providerRaw),
+                  providerType != .unknown else { continue }
             
             let presetId = preset.id
-            var request = URLRequest(url: usageUrl, timeoutInterval: 10)
-            request.httpMethod = "GET"
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-            
-            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            Task { [weak self] in
                 guard let self = self else { return }
-                guard error == nil, let data = data,
-                      let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
-                    return
+                guard let result = await fetchBalance(provider: providerType, baseUrl: baseUrl, apiKey: apiKey) else { return }
+                let display = result.displayString
+                await MainActor.run { self.accountQuotas[presetId] = display }
+            }
+        }
+    }
+    
+    /// 触发对指定 API 模式预设的供应商探测，并将结果回写到 preset（支持可选防抖）
+    func detectAndSaveBalanceProvider(for preset: ProviderPreset, debounce: Bool = false) {
+        guard !preset.isOfficial,
+              let baseUrl = preset.baseUrl, !baseUrl.isEmpty,
+              let apiKey = preset.apiKey, !apiKey.isEmpty else { return }
+        let presetId = preset.id
+        
+        if debounce {
+            detectionTasks[presetId]?.cancel()
+            detectionTasks[presetId] = Task { [weak self] in
+                do {
+                    // 1.5 秒延迟以实现防抖
+                    try await Task.sleep(nanoseconds: 1_500_000_000)
+                } catch {
+                    return // 被取消了
                 }
-                
-                // extractor 逻辑：
-                // remaining = response.remaining ?? response.quota.remaining ?? response.balance
-                let quotaDict = dict["quota"] as? [String: Any]
-                let remaining: Double?
-                if let v = dict["remaining"] as? Double {
-                    remaining = v
-                } else if let v = dict["remaining"] as? Int {
-                    remaining = Double(v)
-                } else if let v = quotaDict?["remaining"] as? Double {
-                    remaining = v
-                } else if let v = quotaDict?["remaining"] as? Int {
-                    remaining = Double(v)
-                } else if let v = dict["balance"] as? Double {
-                    remaining = v
-                } else if let v = dict["balance"] as? Int {
-                    remaining = Double(v)
-                } else {
-                    remaining = nil
+                guard let self = self else { return }
+                await self.executeDetection(presetId: presetId, baseUrl: baseUrl, apiKey: apiKey)
+            }
+        } else {
+            Task { [weak self] in
+                guard let self = self else { return }
+                await self.executeDetection(presetId: presetId, baseUrl: baseUrl, apiKey: apiKey)
+            }
+        }
+    }
+    
+    private func executeDetection(presetId: String, baseUrl: String, apiKey: String) async {
+        let detected = await detectBalanceProvider(baseUrl: baseUrl, apiKey: apiKey)
+        await MainActor.run {
+            guard let index = self.presets.firstIndex(where: { $0.id == presetId }) else { return }
+            let old = self.presets[index]
+            self.presets[index] = ProviderPreset(
+                id: old.id, name: old.name, isOfficial: old.isOfficial,
+                providerId: old.providerId, model: old.model,
+                baseUrl: old.baseUrl, apiKey: old.apiKey,
+                authJson: old.authJson,
+                detectedBalanceProvider: detected.rawValue
+            )
+            self.savePresets()
+            // 探测完成后立刻查一次余额
+            if detected != .unknown {
+                Task {
+                    guard let result = await fetchBalance(provider: detected, baseUrl: baseUrl, apiKey: apiKey) else { return }
+                    let display = result.displayString
+                    await MainActor.run { self.accountQuotas[presetId] = display }
                 }
-                
-                // unit = response.unit ?? response.quota.unit ?? "USD"
-                let unit: String
-                if let u = dict["unit"] as? String, !u.isEmpty {
-                    unit = u
-                } else if let u = quotaDict?["unit"] as? String, !u.isEmpty {
-                    unit = u
-                } else {
-                    unit = "USD"
-                }
-                
-                // isValid = response.is_active ?? response.isValid ?? true
-                let isValid: Bool
-                if let v = dict["is_active"] as? Bool {
-                    isValid = v
-                } else if let v = dict["isValid"] as? Bool {
-                    isValid = v
-                } else {
-                    isValid = true
-                }
-                
-                let balanceStr: String
-                if let r = remaining {
-                    let formatted = String(format: r.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", r)
-                    balanceStr = isValid ? "余额：\(formatted) \(unit)" : "余额：\(formatted) \(unit)（已失效）"
-                } else {
-                    balanceStr = "余额获取失败"
-                }
-                
-                DispatchQueue.main.async {
-                    self.accountQuotas[presetId] = balanceStr
-                }
-            }.resume()
+            }
         }
     }
 }

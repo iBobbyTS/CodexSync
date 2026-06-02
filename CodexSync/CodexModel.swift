@@ -10,6 +10,8 @@ struct ProviderPreset: Identifiable, Codable, Hashable {
     let baseUrl: String?
     let apiKey: String?
     let authJson: String? // 官方网页登录的 auth.json 原始 JSON 字符串
+    /// 自动探测到的余额查询供应商（nil = 未探测或探测失败）
+    var detectedBalanceProvider: String?
 }
 
 /// 当前 Codex 本地状态信息

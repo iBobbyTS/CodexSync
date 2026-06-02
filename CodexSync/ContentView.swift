@@ -688,12 +688,17 @@ struct ContentView: View {
                             model: newModel,
                             baseUrl: newIsOfficial ? nil : newBaseUrl,
                             apiKey: newIsOfficial ? nil : newApiKey,
-                            authJson: newIsOfficial ? newAuthJson : nil
+                            authJson: newIsOfficial ? newAuthJson : nil,
+                            detectedBalanceProvider: nil
                         )
                         configManager.presets.append(preset)
                         configManager.savePresets()
                         selectedPresetId = preset.id
                         showingAddSheet = false
+                        
+                        if !newIsOfficial {
+                            configManager.detectAndSaveBalanceProvider(for: preset, debounce: false)
+                        }
                     }
                     .keyboardShortcut(.defaultAction)
                     .disabled(
@@ -765,6 +770,10 @@ struct ContentView: View {
         authJson: String? = nil
     ) {
         let old = configManager.presets[index]
+        
+        let urlChanged = baseUrl != nil && baseUrl != old.baseUrl
+        let keyChanged = apiKey != nil && apiKey != old.apiKey
+        
         let updated = ProviderPreset(
             id: old.id,
             name: name ?? old.name,
@@ -773,10 +782,16 @@ struct ContentView: View {
             model: model ?? old.model,
             baseUrl: baseUrl ?? old.baseUrl,
             apiKey: apiKey ?? old.apiKey,
-            authJson: authJson ?? old.authJson
+            authJson: authJson ?? old.authJson,
+            detectedBalanceProvider: (urlChanged || keyChanged) ? nil : old.detectedBalanceProvider
         )
         configManager.presets[index] = updated
         configManager.savePresets()
+        
+        if urlChanged || keyChanged {
+            configManager.accountQuotas[old.id] = nil // 立即重置侧边栏额度显示
+            configManager.detectAndSaveBalanceProvider(for: updated, debounce: true)
+        }
     }
     
     private func deletePresets(offsets: IndexSet) {
