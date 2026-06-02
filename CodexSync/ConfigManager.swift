@@ -16,17 +16,21 @@ class ConfigManager: ObservableObject {
     let authURL: URL
     let presetsURL: URL
     
-    init() {
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        self.codexHome = homeDir.appendingPathComponent(".codex")
-        self.configURL = codexHome.appendingPathComponent("config.toml")
-        self.authURL = codexHome.appendingPathComponent("auth.json")
+    init(codexHome: URL? = nil, presetsURL: URL? = nil) {
+        let actualCodexHome = codexHome ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+        self.codexHome = actualCodexHome
+        self.configURL = actualCodexHome.appendingPathComponent("config.toml")
+        self.authURL = actualCodexHome.appendingPathComponent("auth.json")
         
-        // 预设列表的持久化存储路径
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("CodexSync")
-        try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true, attributes: nil)
-        self.presetsURL = appDir.appendingPathComponent("presets.json")
+        if let customPresetsURL = presetsURL {
+            self.presetsURL = customPresetsURL
+        } else {
+            // 预设列表的持久化存储路径
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let appDir = appSupport.appendingPathComponent("CodexSync")
+            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true, attributes: nil)
+            self.presetsURL = appDir.appendingPathComponent("presets.json")
+        }
         
         loadPresets()
         refreshState()
@@ -160,24 +164,26 @@ class ConfigManager: ObservableObject {
             
             // 3. 针对不同模式单独设置参数与鉴权
             if preset.isOfficial {
-                // 官方模式：移除第三方的 custom-scoped 配置，使用 auth.json 网页登录态
+                // 官方模式：移除顶级和特定官方 section 的自定义配置
                 editor.setValue(nil, forKey: "base_url")
                 editor.setValue(nil, forKey: "experimental_bearer_token")
                 
-                // 清理 model_providers 表下的自定义字段（若有）
-                editor.setValue(nil, forKey: "base_url", inSection: "model_providers.\(preset.providerId)")
-                editor.setValue(nil, forKey: "experimental_bearer_token", inSection: "model_providers.\(preset.providerId)")
+                // 彻底清除所有第三方的 model_providers.xxx 段，保持 config.toml 纯净
+                editor.removeAllModelProvidersExcept(activeProviderId: nil)
                 
-                // 写入或初始化 auth.json 网页登录态
+                // 彻底覆盖重写 auth.json 写入网页登录态，绝不保留任何第三方 API 的残留
                 if let authJsonStr = preset.authJson, !authJsonStr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     try authJsonStr.write(to: authURL, atomically: true, encoding: .utf8)
-                } else if !FileManager.default.fileExists(atPath: authURL.path) {
+                } else {
                     let initialAuth: [String: Any] = ["auth_mode": "chatgpt"]
                     let authData = try JSONSerialization.data(withJSONObject: initialAuth, options: [.prettyPrinted])
                     try authData.write(to: authURL, options: .atomic)
                 }
             } else {
-                // API 模式：安全地写入特定 Provider Section，绝不破坏 auth.json 中已存的官方网页登录态
+                // API 模式：彻底清除其他第三方的 model_providers.xxx 段，只保留当前激活的 API 供应商配置
+                editor.removeAllModelProvidersExcept(activeProviderId: preset.providerId)
+                
+                // 写入当前特定 Provider Section
                 let sectionName = "model_providers.\(preset.providerId)"
                 editor.setValue(preset.name, forKey: "name", inSection: sectionName)
                 editor.setValue(preset.baseUrl ?? "", forKey: "base_url", inSection: sectionName)
@@ -187,6 +193,12 @@ class ConfigManager: ObservableObject {
                 // 确保顶级没有残留导致冲突
                 editor.setValue(nil, forKey: "base_url")
                 editor.setValue(nil, forKey: "experimental_bearer_token")
+                
+                // API 模式下彻底清除/覆盖 auth.json 里的 chatgpt 网页登录态，以防冲突
+                // 写入 `bearer_only` 告知 Codex 跳过网页/OAuth 登录态校验，仅走 API key
+                let apiAuth: [String: Any] = ["auth_mode": "bearer_only"]
+                let authData = try JSONSerialization.data(withJSONObject: apiAuth, options: [.prettyPrinted])
+                try authData.write(to: authURL, options: .atomic)
             }
             
             // 4. 原子性写入修改后的 config.toml
@@ -719,6 +731,66 @@ struct TomlEditor {
         }
     }
     
+    /// 彻底删除指定的 Section 及其下的所有配置键值行
+    mutating func removeSection(_ section: String) {
+        var newLines: [String] = []
+        var inTargetSection = false
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let secName = String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
+                if secName == section {
+                    inTargetSection = true
+                    continue // 跳过 section 头部行
+                } else {
+                    inTargetSection = false
+                }
+            }
+            
+            if inTargetSection {
+                // 跳过目标 section 的行
+                continue
+            }
+            
+            newLines.append(line)
+        }
+        self.lines = newLines
+    }
+    
+    /// 清除所有 model_providers.xxx 段，除了指定的 activeProviderId。
+    /// 如果 activeProviderId 为 nil，则彻底清除所有的 model_providers.xxx 配置段。
+    mutating func removeAllModelProvidersExcept(activeProviderId: String?) {
+        var newLines: [String] = []
+        var inRemoveSection = false
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let secName = String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
+                if secName.hasPrefix("model_providers.") {
+                    let providerId = secName.replacingOccurrences(of: "model_providers.", with: "")
+                    if activeProviderId == nil || providerId != activeProviderId! {
+                        inRemoveSection = true
+                        continue
+                    } else {
+                        inRemoveSection = false
+                    }
+                } else {
+                    inRemoveSection = false
+                }
+            }
+            
+            if inRemoveSection {
+                // 跳过正在被清理的 section 行
+                continue
+            }
+            
+            newLines.append(line)
+        }
+        self.lines = newLines
+    }
+
     func toString() -> String {
         return lines.joined(separator: "\n")
     }
