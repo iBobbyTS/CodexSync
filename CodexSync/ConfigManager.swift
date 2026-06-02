@@ -531,6 +531,89 @@ class ConfigManager: ObservableObject {
                 }
             }.resume()
         }
+        
+        // API 模式余额查询：对每个非官方预设调用 {baseUrl}/v1/usage
+        for preset in presets {
+            guard !preset.isOfficial else { continue }
+            guard let baseUrl = preset.baseUrl, !baseUrl.isEmpty,
+                  let apiKey = preset.apiKey, !apiKey.isEmpty else { continue }
+            
+            // 构造 {baseUrl}/v1/usage，确保不重复拼接 /v1
+            let normalizedBase = baseUrl.hasSuffix("/") ? String(baseUrl.dropLast()) : baseUrl
+            let usageUrlStr: String
+            if normalizedBase.hasSuffix("/v1") {
+                usageUrlStr = normalizedBase + "/usage"
+            } else {
+                usageUrlStr = normalizedBase + "/v1/usage"
+            }
+            guard let usageUrl = URL(string: usageUrlStr) else { continue }
+            
+            let presetId = preset.id
+            var request = URLRequest(url: usageUrl, timeoutInterval: 10)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                guard let self = self else { return }
+                guard error == nil, let data = data,
+                      let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+                    return
+                }
+                
+                // extractor 逻辑：
+                // remaining = response.remaining ?? response.quota.remaining ?? response.balance
+                let quotaDict = dict["quota"] as? [String: Any]
+                let remaining: Double?
+                if let v = dict["remaining"] as? Double {
+                    remaining = v
+                } else if let v = dict["remaining"] as? Int {
+                    remaining = Double(v)
+                } else if let v = quotaDict?["remaining"] as? Double {
+                    remaining = v
+                } else if let v = quotaDict?["remaining"] as? Int {
+                    remaining = Double(v)
+                } else if let v = dict["balance"] as? Double {
+                    remaining = v
+                } else if let v = dict["balance"] as? Int {
+                    remaining = Double(v)
+                } else {
+                    remaining = nil
+                }
+                
+                // unit = response.unit ?? response.quota.unit ?? "USD"
+                let unit: String
+                if let u = dict["unit"] as? String, !u.isEmpty {
+                    unit = u
+                } else if let u = quotaDict?["unit"] as? String, !u.isEmpty {
+                    unit = u
+                } else {
+                    unit = "USD"
+                }
+                
+                // isValid = response.is_active ?? response.isValid ?? true
+                let isValid: Bool
+                if let v = dict["is_active"] as? Bool {
+                    isValid = v
+                } else if let v = dict["isValid"] as? Bool {
+                    isValid = v
+                } else {
+                    isValid = true
+                }
+                
+                let balanceStr: String
+                if let r = remaining {
+                    let formatted = String(format: r.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", r)
+                    balanceStr = isValid ? "余额：\(formatted) \(unit)" : "余额：\(formatted) \(unit)（已失效）"
+                } else {
+                    balanceStr = "余额获取失败"
+                }
+                
+                DispatchQueue.main.async {
+                    self.accountQuotas[presetId] = balanceStr
+                }
+            }.resume()
+        }
     }
 }
 

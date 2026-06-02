@@ -63,9 +63,21 @@ struct ContentView: View {
                                                 .foregroundColor(.secondary)
                                         }
                                     } else {
-                                        Text(preset.model)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        let balanceStr = configManager.accountQuotas[preset.id]
+                                        if let bs = balanceStr, bs.hasPrefix("余额：") {
+                                            // 提取数值用于颜色判断
+                                            let amountPart = String(bs.dropFirst("余额：".count))
+                                            let numVal = bs.matches(of: /[\d.]+/).first
+                                                .flatMap { Double(bs[$0.range]) } ?? 0.0
+                                            let amountColor: Color = numVal < 5 ? .red : .green
+                                            (Text("余额：").foregroundColor(.secondary) +
+                                             Text(amountPart).foregroundColor(amountColor))
+                                                .font(.caption)
+                                        } else {
+                                            Text(balanceStr ?? preset.model)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
                                 }
                                 
