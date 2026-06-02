@@ -18,6 +18,12 @@ struct ContentView: View {
     @State private var newApiKey = ""
     @State private var newAuthJson = ""
     
+    // 隐藏/显示秘钥与auth.json的状态控制
+    @State private var showAuthJson = false
+    @State private var showApiKey = false
+    @State private var showNewAuthJson = false
+    @State private var showNewApiKey = false
+    
     // 导入当前活动配置相关状态
     @State private var showingImportAlert = false
     @State private var importAlertMessage = ""
@@ -498,27 +504,60 @@ struct ContentView: View {
                                     
                                     if preset.isOfficial {
                                         Group {
-                                            Text("auth.json 内容 (JSON 字符串)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            MacCodeEditor(text: Binding(
-                                                get: { preset.authJson ?? "" },
-                                                set: { updatePresetField(index: presetIndex, authJson: $0) }
-                                            ))
-                                            .frame(height: 120)
-                                            .padding(4)
-                                            .background(Color(NSColor.controlBackgroundColor))
-                                            .cornerRadius(6)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                                            )
-                                            
-                                            if let errorMsg = jsonValidationError(preset.authJson ?? "") {
-                                                Text("⚠️ JSON 格式错误: \(errorMsg)")
+                                            HStack {
+                                                Text("auth.json 内容 (JSON 字符串)")
                                                     .font(.caption)
-                                                    .foregroundColor(.red)
-                                                    .padding(.top, 2)
+                                                    .foregroundColor(.secondary)
+                                                Spacer()
+                                                Button(action: {
+                                                    showAuthJson.toggle()
+                                                }) {
+                                                    Image(systemName: showAuthJson ? "eye.slash" : "eye")
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                            
+                                            if showAuthJson {
+                                                MacCodeEditor(text: Binding(
+                                                    get: { preset.authJson ?? "" },
+                                                    set: { updatePresetField(index: presetIndex, authJson: $0) }
+                                                ))
+                                                .frame(height: 120)
+                                                .padding(4)
+                                                .background(Color(NSColor.controlBackgroundColor))
+                                                .cornerRadius(6)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                                )
+                                                
+                                                if let errorMsg = jsonValidationError(preset.authJson ?? "") {
+                                                    Text("⚠️ JSON 格式错误: \(errorMsg)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.red)
+                                                        .padding(.top, 2)
+                                                }
+                                            } else {
+                                                HStack {
+                                                    Spacer()
+                                                    VStack(spacing: 8) {
+                                                        Image(systemName: "lock.rectangle.on.rectangle")
+                                                            .font(.title2)
+                                                            .foregroundColor(.secondary)
+                                                        Text("auth.json 内容已隐藏")
+                                                            .font(.caption)
+                                                            .foregroundColor(.secondary)
+                                                    }
+                                                    Spacer()
+                                                }
+                                                .frame(height: 120)
+                                                .background(Color(NSColor.controlBackgroundColor))
+                                                .cornerRadius(6)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                                )
                                             }
                                         }
                                     } else {
@@ -534,14 +573,33 @@ struct ContentView: View {
                                         }
                                         
                                         Group {
-                                            Text("API 密钥 (API Key)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            TextField("输入您的 API 密钥", text: Binding(
-                                                get: { preset.apiKey ?? "" },
-                                                set: { updatePresetField(index: presetIndex, apiKey: $0) }
-                                            ))
-                                            .textFieldStyle(.roundedBorder)
+                                            HStack {
+                                                Text("API 密钥 (API Key)")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                Spacer()
+                                                Button(action: {
+                                                    showApiKey.toggle()
+                                                }) {
+                                                    Image(systemName: showApiKey ? "eye.slash" : "eye")
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                            
+                                            if showApiKey {
+                                                TextField("输入您的 API 密钥", text: Binding(
+                                                    get: { preset.apiKey ?? "" },
+                                                    set: { updatePresetField(index: presetIndex, apiKey: $0) }
+                                                ))
+                                                .textFieldStyle(.roundedBorder)
+                                            } else {
+                                                SecureField("输入您的 API 密钥", text: Binding(
+                                                    get: { preset.apiKey ?? "" },
+                                                    set: { updatePresetField(index: presetIndex, apiKey: $0) }
+                                                ))
+                                                .textFieldStyle(.roundedBorder)
+                                            }
                                         }
                                     }
                                 }
@@ -627,29 +685,62 @@ struct ContentView: View {
                     
                     if newIsOfficial {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("auth.json 内容 (JSON 字符串)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            MacCodeEditor(text: $newAuthJson)
+                            HStack {
+                                Text("auth.json 内容 (JSON 字符串)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: {
+                                    showNewAuthJson.toggle()
+                                }) {
+                                    Image(systemName: showNewAuthJson ? "eye.slash" : "eye")
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            if showNewAuthJson {
+                                MacCodeEditor(text: $newAuthJson)
+                                    .frame(height: 120)
+                                    .padding(4)
+                                    .background(Color(NSColor.controlBackgroundColor))
+                                    .cornerRadius(6)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                    )
+                                
+                                if let errorMsg = jsonValidationError(newAuthJson) {
+                                    Text("⚠️ JSON 格式错误: \(errorMsg)")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .padding(.top, 2)
+                                } else if isNewAccountIdAlreadyExists {
+                                    Text("⚠️ 该账号 (Account ID) 已存在于预设列表中，请勿重复添加")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .padding(.top, 2)
+                                }
+                            } else {
+                                HStack {
+                                    Spacer()
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "lock.rectangle.on.rectangle")
+                                            .font(.title2)
+                                            .foregroundColor(.secondary)
+                                        Text("auth.json 内容已隐藏")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                }
                                 .frame(height: 120)
-                                .padding(4)
                                 .background(Color(NSColor.controlBackgroundColor))
                                 .cornerRadius(6)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                                 )
-                            
-                            if let errorMsg = jsonValidationError(newAuthJson) {
-                                Text("⚠️ JSON 格式错误: \(errorMsg)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                    .padding(.top, 2)
-                            } else if isNewAccountIdAlreadyExists {
-                                Text("⚠️ 该账号 (Account ID) 已存在于预设列表中，请勿重复添加")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                    .padding(.top, 2)
                             }
                         }
                     } else {
@@ -663,8 +754,22 @@ struct ContentView: View {
                         HStack {
                             Text("API 密钥")
                                 .frame(width: 100, alignment: .leading)
-                            TextField("API Key", text: $newApiKey)
-                                .textFieldStyle(.roundedBorder)
+                            
+                            if showNewApiKey {
+                                TextField("API Key", text: $newApiKey)
+                                    .textFieldStyle(.roundedBorder)
+                            } else {
+                                SecureField("API Key", text: $newApiKey)
+                                    .textFieldStyle(.roundedBorder)
+                            }
+                            
+                            Button(action: {
+                                showNewApiKey.toggle()
+                            }) {
+                                Image(systemName: showNewApiKey ? "eye.slash" : "eye")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -726,6 +831,10 @@ struct ContentView: View {
                 configManager.refreshState()
             }
         }
+        .onChange(of: selectedPresetId) { oldValue, newValue in
+            showAuthJson = false
+            showApiKey = false
+        }
     }
     
     // MARK: - 辅助组件
@@ -757,6 +866,8 @@ struct ContentView: View {
         newBaseUrl = ""
         newApiKey = ""
         newAuthJson = ""
+        showNewAuthJson = false
+        showNewApiKey = false
     }
     
     private func updatePresetField(
