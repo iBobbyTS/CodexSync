@@ -109,10 +109,36 @@ class ConfigManager: ObservableObject {
                     
                     // 读取 Tokens 详情 (ChatGPT 模式)
                     if let tokens = authObj["tokens"] as? [String: Any] {
-                        newState.currentAccountId = tokens["account_id"] as? String
+                        let accountId = tokens["account_id"] as? String
+                        newState.currentAccountId = accountId
                         newState.currentIdToken = tokens["id_token"] as? String
                         newState.currentAccessToken = tokens["access_token"] as? String
                         newState.currentRefreshToken = tokens["refresh_token"] as? String
+                        
+                        // 自动更新相同 account_id 预设的 auth.json 内容
+                        if let accId = accountId,
+                           let currentAuthJsonStr = try? String(contentsOf: authURL, encoding: .utf8) {
+                            var updatedAny = false
+                            for i in 0..<self.presets.count {
+                                let preset = self.presets[i]
+                                guard preset.isOfficial, let presetAuthStr = preset.authJson else { continue }
+                                
+                                if let presetAuthData = presetAuthStr.data(using: .utf8),
+                                   let presetAuthObj = try? JSONSerialization.jsonObject(with: presetAuthData, options: []) as? [String: Any],
+                                   let presetTokens = presetAuthObj["tokens"] as? [String: Any],
+                                   let presetAccId = presetTokens["account_id"] as? String,
+                                   presetAccId == accId {
+                                    
+                                    if presetAuthStr != currentAuthJsonStr {
+                                        self.presets[i].authJson = currentAuthJsonStr
+                                        updatedAny = true
+                                    }
+                                }
+                            }
+                            if updatedAny {
+                                self.savePresets()
+                            }
+                        }
                     }
                     
                     // 读取 last_refresh
@@ -232,6 +258,7 @@ class ConfigManager: ObservableObject {
             // 3. 读取 auth.json 判别是否是官方网页登录模式
             var isOfficial = (providerId == "openai")
             var authApiKey: String? = nil
+            var accountId: String? = nil
             
             if FileManager.default.fileExists(atPath: authURL.path) {
                 let authData = try Data(contentsOf: authURL)
@@ -241,6 +268,10 @@ class ConfigManager: ObservableObject {
                         isOfficial = true
                     }
                     authApiKey = authObj["OPENAI_API_KEY"] as? String
+                    
+                    if let tokens = authObj["tokens"] as? [String: Any] {
+                        accountId = tokens["account_id"] as? String
+                    }
                 }
             }
             
@@ -267,13 +298,25 @@ class ConfigManager: ObservableObject {
                 presetAuthJson = nil
             }
             
-            // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，忽略显示名称）
-            let matchedIndex = presets.firstIndex {
-                $0.providerId == providerId &&
-                $0.isOfficial == isOfficial &&
-                $0.model == model &&
-                ($0.baseUrl ?? "") == (presetBaseUrl ?? "") &&
-                ($0.apiKey ?? "") == (presetApiKey ?? "")
+            // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，对于官方账号匹配 account_id）
+            let matchedIndex = presets.firstIndex { preset in
+                if preset.isOfficial && isOfficial {
+                    guard let currentAccountId = accountId,
+                          let presetAuthStr = preset.authJson,
+                          let presetAuthData = presetAuthStr.data(using: .utf8),
+                          let presetAuthObj = try? JSONSerialization.jsonObject(with: presetAuthData, options: []) as? [String: Any],
+                          let presetTokens = presetAuthObj["tokens"] as? [String: Any],
+                          let presetAccountId = presetTokens["account_id"] as? String else {
+                        return false
+                    }
+                    return presetAccountId == currentAccountId
+                } else {
+                    return preset.providerId == providerId &&
+                           preset.isOfficial == isOfficial &&
+                           preset.model == model &&
+                           (preset.baseUrl ?? "") == (presetBaseUrl ?? "") &&
+                           (preset.apiKey ?? "") == (presetApiKey ?? "")
+                }
             }
             
             if let index = matchedIndex {

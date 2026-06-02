@@ -92,33 +92,10 @@ struct ContentView: View {
                                 // 激活与更新指示灯
                                 if configManager.state.currentProvider == preset.providerId &&
                                    (!preset.isOfficial || configManager.state.isOfficial) {
-                                    if preset.isOfficial && isPresetMatchingCurrentAccount(preset) && presetNeedsUpdate(preset) {
-                                        HStack(spacing: 8) {
-                                            Button(action: {
-                                                configManager.updatePresetAuthJson(id: preset.id)
-                                            }) {
-                                                Text("更新预设")
-                                                    .font(.caption)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.white)
-                                                    .padding(.horizontal, 8)
-                                                    .padding(.vertical, 3)
-                                                    .background(Color.orange)
-                                                    .cornerRadius(4)
-                                            }
-                                            .buttonStyle(.plain)
-                                            
-                                            Circle()
-                                                .fill(Color.orange)
-                                                .frame(width: 8, height: 8)
-                                                .shadow(color: .orange.opacity(0.5), radius: 3)
-                                        }
-                                    } else {
-                                        Circle()
-                                            .fill(Color.green)
-                                            .frame(width: 8, height: 8)
-                                            .shadow(color: .green.opacity(0.5), radius: 3)
-                                    }
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: .green.opacity(0.5), radius: 3)
                                 }
                             }
                         }
@@ -458,9 +435,8 @@ struct ContentView: View {
                         let preset = configManager.presets[presetIndex]
                         let isActive = configManager.state.currentProvider == preset.providerId &&
                                        (!preset.isOfficial || configManager.state.isOfficial)
-                        let needsUpdate = preset.isOfficial && isPresetMatchingCurrentAccount(preset) && presetNeedsUpdate(preset)
                         let isAuthJsonInvalid = preset.isOfficial && jsonValidationError(preset.authJson ?? "") != nil
-                        let isButtonDisabled = (isActive && !needsUpdate) || isAuthJsonInvalid
+                        let isButtonDisabled = isActive || isAuthJsonInvalid
                         
                         VStack(alignment: .leading, spacing: 20) {
                             HStack(alignment: .center) {
@@ -1032,29 +1008,7 @@ struct ContentView: View {
         return accountId == currentAccountId
     }
     
-    private func presetNeedsUpdate(_ preset: ProviderPreset) -> Bool {
-        guard preset.isOfficial else { return false }
-        guard let authJsonData = preset.authJson?.data(using: .utf8),
-              let presetDict = try? JSONSerialization.jsonObject(with: authJsonData, options: []) as? [String: Any] else {
-            return true
-        }
-        
-        let presetTokens = presetDict["tokens"] as? [String: Any] ?? [:]
-        let presetIdToken = presetTokens["id_token"] as? String ?? ""
-        let presetAccessToken = presetTokens["access_token"] as? String ?? ""
-        let presetRefreshToken = presetTokens["refresh_token"] as? String ?? ""
-        let presetLastRefresh = presetDict["last_refresh"] != nil ? "\(presetDict["last_refresh"]!)" : ""
-        
-        let currentIdToken = configManager.state.currentIdToken ?? ""
-        let currentAccessToken = configManager.state.currentAccessToken ?? ""
-        let currentRefreshToken = configManager.state.currentRefreshToken ?? ""
-        let currentLastRefresh = configManager.state.currentLastRefresh ?? ""
-        
-        return presetIdToken != currentIdToken ||
-               presetAccessToken != currentAccessToken ||
-               presetRefreshToken != currentRefreshToken ||
-               presetLastRefresh != currentLastRefresh
-    }
+
     
     private var chatGptPresetExists: Bool {
         guard configManager.state.isOfficial,
