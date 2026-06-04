@@ -275,51 +275,88 @@ class SyncEngine: ObservableObject {
             return 0
         }
         
-        for (index, fileURL) in jsonlFiles.enumerated() {
-            let content = try String(contentsOf: fileURL, encoding: .utf8)
-            let lines = content.components(separatedBy: .newlines)
-            var newLines: [String] = []
-            var changed = false
-            
-            for line in lines {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.contains("\"session_meta\"") {
-                    if let data = trimmed.data(using: .utf8),
-                       var json = try? JSONSerialization.jsonObject(with: data, options: [.mutableContainers]) as? [String: Any],
-                       var payload = json["payload"] as? [String: Any] {
-                        
-                        let providerMatches = payload["model_provider"] as? String == provider
-                        let modelMatches = payload["model"] as? String == model
-                        
-                        if !providerMatches || !modelMatches {
-                            payload["model_provider"] = provider
-                            payload["model"] = model
-                            json["payload"] = payload
+        let lock = NSLock()
+        var processedCount = 0
+        
+        let maxThreads = max(1, ProcessInfo.processInfo.activeProcessorCount - 2)
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = maxThreads
+        let group = DispatchGroup()
+        
+        for index in 0..<totalFiles {
+            group.enter()
+            queue.addOperation {
+                let fileURL = jsonlFiles[index]
+                
+                defer {
+                    lock.lock()
+                    processedCount += 1
+                    let progress = Double(processedCount) / Double(totalFiles)
+                    lock.unlock()
+                    
+                    DispatchQueue.main.async {
+                        self.sessionFilesProgress = progress
+                    }
+                    
+                    group.leave()
+                }
+                
+                guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
+                    return
+                }
+                
+                // 快速跳过
+                guard content.contains("\"session_meta\"") else {
+                    return
+                }
+                
+                var newLines: [String] = []
+                var changed = false
+                
+                content.enumerateLines { line, stop in
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.contains("\"session_meta\"") {
+                        if let data = trimmed.data(using: .utf8),
+                           var json = try? JSONSerialization.jsonObject(with: data, options: [.mutableContainers]) as? [String: Any],
+                           var payload = json["payload"] as? [String: Any] {
                             
-                            let newData = try JSONSerialization.data(withJSONObject: json, options: [])
-                            if let newJsonLine = String(data: newData, encoding: .utf8) {
-                                newLines.append(newJsonLine)
-                                changed = true
-                                continue
+                            let providerMatches = payload["model_provider"] as? String == provider
+                            let modelMatches = payload["model"] as? String == model
+                            
+                            if !providerMatches || !modelMatches {
+                                payload["model_provider"] = provider
+                                payload["model"] = model
+                                json["payload"] = payload
+                                
+                                if let newData = try? JSONSerialization.data(withJSONObject: json, options: []),
+                                   let newJsonLine = String(data: newData, encoding: .utf8) {
+                                    newLines.append(newJsonLine)
+                                    changed = true
+                                    return
+                                }
                             }
                         }
                     }
+                    newLines.append(line)
                 }
-                newLines.append(line)
-            }
-            
-            if changed {
-                let newContent = newLines.joined(separator: "\n")
-                // 采用原子写入选项，防止写入半成品导致文件损坏
-                try newContent.write(to: fileURL, atomically: true, encoding: .utf8)
-                updatedCount += 1
-            }
-            
-            let progress = Double(index + 1) / Double(totalFiles)
-            DispatchQueue.main.async {
-                self.sessionFilesProgress = progress
+                
+                if changed {
+                    var newContent = newLines.joined(separator: "\n")
+                    if content.hasSuffix("\n") {
+                        newContent += "\n"
+                    }
+                    
+                    // 采用原子写入选项，防止写入半成品导致文件损坏
+                    try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
+                    
+                    lock.lock()
+                    updatedCount += 1
+                    lock.unlock()
+                }
             }
         }
+        
+        group.wait()
         
         return updatedCount
     }
