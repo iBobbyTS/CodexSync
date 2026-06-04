@@ -13,6 +13,12 @@ class SyncEngine: ObservableObject {
     @Published var cleanError: String? = nil
     @Published var cleanSuccess = false
     
+    // 细粒度同步步骤进度（0.0 代表未开始/等待，0.2+ 代表进行中，1.0 代表完成）
+    @Published var backupProgress: Double = 0.0
+    @Published var dbProgress: Double = 0.0
+    @Published var sessionFilesProgress: Double = 0.0
+    @Published var sidebarIndexProgress: Double = 0.0
+    
     let codexHome: URL
     let dbURL: URL
     let backupDir: URL
@@ -22,6 +28,15 @@ class SyncEngine: ObservableObject {
     init() {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         self.codexHome = homeDir.appendingPathComponent(".codex")
+        self.dbURL = codexHome.appendingPathComponent("state_5.sqlite")
+        self.backupDir = codexHome.appendingPathComponent("history_sync_backups")
+        self.sessionIndexURL = codexHome.appendingPathComponent("session_index.jsonl")
+        self.sessionsDir = codexHome.appendingPathComponent("sessions")
+    }
+    
+    /// 用于测试和自定义路径的初始化函数
+    init(codexHome: URL) {
+        self.codexHome = codexHome
         self.dbURL = codexHome.appendingPathComponent("state_5.sqlite")
         self.backupDir = codexHome.appendingPathComponent("history_sync_backups")
         self.sessionIndexURL = codexHome.appendingPathComponent("session_index.jsonl")
@@ -40,30 +55,53 @@ class SyncEngine: ObservableObject {
         self.progressMessage = "正在准备安全备份..."
         self.syncError = nil
         self.syncSuccess = false
+        self.backupProgress = 0.0
+        self.dbProgress = 0.0
+        self.sessionFilesProgress = 0.0
+        self.sidebarIndexProgress = 0.0
         
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 // 1. 创建安全备份
+                DispatchQueue.main.async {
+                    self.backupProgress = 0.2
+                    self.progressMessage = "正在准备安全备份..."
+                }
                 let backupURL = try self.makeSafetyBackup()
+                DispatchQueue.main.async {
+                    self.backupProgress = 1.0
+                }
                 print("安全备份已创建: \(backupURL.path)")
                 
                 // 2. 更新 SQLite 数据库的 threads 表
                 DispatchQueue.main.async {
+                    self.dbProgress = 0.2
                     self.progressMessage = "正在同步本地数据库记录..."
                 }
                 let updatedRows = try self.executeUpdateInDatabase(provider: currentProvider, model: currentModel)
+                DispatchQueue.main.async {
+                    self.dbProgress = 1.0
+                }
                 
                 // 3. 更新会话 JSONL 元数据
                 DispatchQueue.main.async {
+                    self.sessionFilesProgress = 0.0
                     self.progressMessage = "正在更新会话元数据文件..."
                 }
                 let updatedSessionFiles = try self.syncSessionFiles(provider: currentProvider, model: currentModel)
+                DispatchQueue.main.async {
+                    self.sessionFilesProgress = 1.0
+                }
                 
                 // 4. 重建侧边栏列表索引
                 DispatchQueue.main.async {
+                    self.sidebarIndexProgress = 0.2
                     self.progressMessage = "正在对齐侧边栏索引排序..."
                 }
                 let indexedCount = try self.rebuildSessionIndex(provider: currentProvider)
+                DispatchQueue.main.async {
+                    self.sidebarIndexProgress = 1.0
+                }
                 
                 DispatchQueue.main.async {
                     self.isSyncing = false
@@ -200,6 +238,9 @@ class SyncEngine: ObservableObject {
     /// 原子性批量覆写 rollout JSONL 文件的会话元数据
     private func syncSessionFiles(provider: String, model: String) throws -> Int {
         guard FileManager.default.fileExists(atPath: sessionsDir.path) else {
+            DispatchQueue.main.async {
+                self.sessionFilesProgress = 1.0
+            }
             return 0
         }
         
@@ -213,8 +254,16 @@ class SyncEngine: ObservableObject {
         }
         
         var updatedCount = 0
+        let totalFiles = jsonlFiles.count
         
-        for fileURL in jsonlFiles {
+        if totalFiles == 0 {
+            DispatchQueue.main.async {
+                self.sessionFilesProgress = 1.0
+            }
+            return 0
+        }
+        
+        for (index, fileURL) in jsonlFiles.enumerated() {
             let content = try String(contentsOf: fileURL, encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
             var newLines: [String] = []
@@ -252,6 +301,11 @@ class SyncEngine: ObservableObject {
                 // 采用原子写入选项，防止写入半成品导致文件损坏
                 try newContent.write(to: fileURL, atomically: true, encoding: .utf8)
                 updatedCount += 1
+            }
+            
+            let progress = Double(index + 1) / Double(totalFiles)
+            DispatchQueue.main.async {
+                self.sessionFilesProgress = progress
             }
         }
         

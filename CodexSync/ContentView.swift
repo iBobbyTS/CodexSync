@@ -292,44 +292,55 @@ struct ContentView: View {
                             }
                         }
                         
-                        if syncEngine.isSyncing {
-                            // 正在同步中的 Spinner
-                            VStack(spacing: 8) {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                                Text(syncEngine.progressMessage)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, 8)
-                        } else {
-                            // 一键同步按钮
-                            Button(action: {
-                                syncEngine.startSync(
-                                    currentProvider: configManager.state.currentProvider,
-                                    currentModel: configManager.state.currentModel
-                                ) { success in
-                                    if success {
-                                        configManager.refreshState()
-                                    }
+                        // 一键同步按钮
+                        Button(action: {
+                            syncEngine.startSync(
+                                currentProvider: configManager.state.currentProvider,
+                                currentModel: configManager.state.currentModel
+                            ) { success in
+                                if success {
+                                    configManager.refreshState()
                                 }
-                            }) {
-                                HStack {
+                            }
+                        }) {
+                            HStack {
+                                if syncEngine.isSyncing {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .progressViewStyle(.circular)
+                                        .scaleEffect(0.8)
+                                        .frame(width: 16, height: 16)
+                                    Text("正在同步...")
+                                } else {
                                     Image(systemName: "arrow.triangle.2.circlepath")
                                     Text("一键对齐本地历史")
                                 }
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding(.vertical, 10)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(configManager.state.pendingSyncCount > 0 ? Color.blue : Color.gray.opacity(0.5))
-                                )
-                                .shadow(color: configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(syncEngine.isSyncing ? Color.gray.opacity(0.5) : (configManager.state.pendingSyncCount > 0 ? Color.blue : Color.gray.opacity(0.5)))
+                            )
+                            .shadow(color: !syncEngine.isSyncing && configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
+                        
+                        // 进度条指示面板
+                        if syncEngine.isSyncing || syncEngine.syncSuccess || syncEngine.syncError != nil {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ProgressBarView(title: "1. 准备安全备份", progress: syncEngine.backupProgress, hasError: syncEngine.syncError != nil)
+                                ProgressBarView(title: "2. 同步本地数据库", progress: syncEngine.dbProgress, hasError: syncEngine.syncError != nil)
+                                ProgressBarView(title: "3. 更新会话元数据", progress: syncEngine.sessionFilesProgress, hasError: syncEngine.syncError != nil)
+                                ProgressBarView(title: "4. 对齐侧边栏索引", progress: syncEngine.sidebarIndexProgress, hasError: syncEngine.syncError != nil)
+                            }
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 12)
+                            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                            .cornerRadius(8)
                         }
                         
                         // 提示与错误信息
@@ -1112,4 +1123,44 @@ struct MacCodeEditor: NSViewRepresentable {
     ContentView()
         .environmentObject(ConfigManager())
         .environmentObject(SyncEngine())
+}
+
+struct ProgressBarView: View {
+    let title: String
+    let progress: Double
+    let hasError: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if hasError && progress < 1.0 {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                } else if progress == 1.0 {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                } else if progress > 0.0 {
+                    ProgressView()
+                        .controlSize(.small)
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.7)
+                        .frame(width: 12, height: 12)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundColor(.gray.opacity(0.5))
+                        .font(.caption)
+                }
+            }
+            
+            ProgressView(value: progress, total: 1.0)
+                .progressViewStyle(.linear)
+                .tint(hasError && progress < 1.0 ? .red : (progress == 1.0 ? .green : .blue))
+        }
+    }
 }

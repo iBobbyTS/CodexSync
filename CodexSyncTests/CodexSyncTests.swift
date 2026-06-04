@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SQLite3
 @testable import CodexSync
 
 struct CodexSyncTests {
@@ -137,6 +138,61 @@ struct CodexSyncTests {
         #expect(authText2.contains("chatgpt"))
         #expect(authText2.contains("new-official-token"))
         #expect(!authText2.contains("bearer_only"))
+    }
+
+    @Test func testSyncEngineProgressFlow() async throws {
+        // 1. 创建临时沙盒环境
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        
+        let codexHome = tempDir.appendingPathComponent(".codex")
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        
+        // 创建 sessions 目录并写入假的 jsonl 文件
+        let sessionsDir = codexHome.appendingPathComponent("sessions")
+        try FileManager.default.createDirectory(at: sessionsDir, withIntermediateDirectories: true)
+        
+        let rolloutFile = sessionsDir.appendingPathComponent("rollout-20260604-120000-00000000-0000-0000-0000-000000000000.jsonl")
+        let dummySessionJson = "{\"session_meta\": {\"type\": \"meta\"}, \"payload\": {\"model_provider\": \"openai\", \"model\": \"gpt-5.5\"}}\n"
+        try dummySessionJson.write(to: rolloutFile, atomically: true, encoding: .utf8)
+        
+        // 创建一个假的 SQLite 数据库并创建 threads 表
+        let dbURL = codexHome.appendingPathComponent("state_5.sqlite")
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil) == SQLITE_OK else {
+            struct DbOpenError: Error {}
+            throw DbOpenError()
+        }
+        sqlite3_exec(db, "CREATE TABLE threads (id TEXT PRIMARY KEY, title TEXT, updated_at INTEGER, model_provider TEXT, model TEXT);", nil, nil, nil)
+        sqlite3_exec(db, "INSERT INTO threads (id, title, updated_at, model_provider, model) VALUES ('00000000-0000-0000-0000-000000000000', 'Dummy Thread', 1700000000, 'openai', 'gpt-5.5');", nil, nil, nil)
+        sqlite3_close(db)
+        
+        // 2. 初始化 SyncEngine
+        let syncEngine = SyncEngine(codexHome: codexHome)
+        
+        // 3. 运行同步并验证进度
+        #expect(syncEngine.backupProgress == 0.0)
+        #expect(syncEngine.dbProgress == 0.0)
+        #expect(syncEngine.sessionFilesProgress == 0.0)
+        #expect(syncEngine.sidebarIndexProgress == 0.0)
+        
+        let success = await withCheckedContinuation { continuation in
+            syncEngine.startSync(currentProvider: "custom_provider", currentModel: "custom_model") { success in
+                continuation.resume(returning: success)
+            }
+        }
+        #expect(success)
+        
+        // 4. 验证在完成时，所有进度是否都已被置为 1.0
+        #expect(syncEngine.backupProgress == 1.0)
+        #expect(syncEngine.dbProgress == 1.0)
+        #expect(syncEngine.sessionFilesProgress == 1.0)
+        #expect(syncEngine.sidebarIndexProgress == 1.0)
+        #expect(syncEngine.syncSuccess)
+        #expect(syncEngine.syncError == nil)
     }
 
 }
