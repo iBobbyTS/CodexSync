@@ -215,8 +215,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.accentColor)
-                    
-                    Spacer()
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
@@ -228,214 +226,214 @@ struct ContentView: View {
             // 右侧主面板
             HSplitView {
                 // 左半：状态指示与一键同步核心面板
-                VStack(spacing: 20) {
-                    // 1. 状态仪表盘
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Codex 本地状态")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            Spacer()
-                            Button(action: {
-                                configManager.refreshState()
-                            }) {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            .buttonStyle(.borderless)
-                            .help("刷新本地状态")
-                        }
-                        
-                        Divider()
-                        
-                        VStack(spacing: 12) {
-                            statusRow(title: "当前服务商 (Provider)", value: configManager.state.currentProvider, icon: "cpu", color: .blue)
-                            statusRow(title: "当前模型 (Model)", value: configManager.state.currentModel, icon: "brain.head.profile", color: .purple)
-                            statusRow(title: "登录模式", value: configManager.state.isOfficial ? "ChatGPT账号" : "API 密钥登录", icon: "key.fill", color: .orange)
-                            statusRow(title: "历史会话文件数", value: "\(configManager.state.sessionFileCount) 个", icon: "doc.text.fill", color: .green)
-                        }
-                    }
-                    .padding(20)
-                    .background(Color(NSColor.windowBackgroundColor))
-                    .cornerRadius(12)
-                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
-                    
-                    // 2. 同步状态面板
-                    VStack(spacing: 16) {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("本地同步就绪状况")
-                                    .font(.headline)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // 1. 状态仪表盘
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Codex 本地状态")
+                                    .font(.title2)
                                     .fontWeight(.bold)
-                                
-                                if configManager.state.pendingSyncCount > 0 {
-                                    Text("检测到有 \(configManager.state.pendingSyncCount) 个历史会话属于旧模式，目前在 Codex 侧边栏已被隐藏。")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text("完美！本地所有历史会话均已对齐当前配置模式，侧边栏显示完整。")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            Spacer()
-                            
-                            // 悬浮数字徽章
-                            ZStack {
-                                Circle()
-                                    .fill(configManager.state.pendingSyncCount > 0 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
-                                    .frame(width: 44, height: 44)
-                                
-                                Text("\(configManager.state.pendingSyncCount)")
-                                    .font(.system(.title3, design: .rounded))
-                                    .fontWeight(.bold)
-                                    .foregroundColor(configManager.state.pendingSyncCount > 0 ? .orange : .green)
-                            }
-                        }
-                        
-                        // 一键同步按钮
-                        Button(action: {
-                            syncEngine.startSync(
-                                currentProvider: configManager.state.currentProvider,
-                                currentModel: configManager.state.currentModel
-                            ) { success in
-                                if success {
+                                Spacer()
+                                Button(action: {
                                     configManager.refreshState()
+                                }) {
+                                    Image(systemName: "arrow.clockwise")
                                 }
+                                .buttonStyle(.borderless)
+                                .help("刷新本地状态")
                             }
-                        }) {
-                            HStack {
-                                if syncEngine.isSyncing {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .progressViewStyle(.circular)
-                                        .scaleEffect(0.8)
-                                        .frame(width: 16, height: 16)
-                                    Text("正在同步...")
-                                } else {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                    Text("一键对齐本地历史")
+                            
+                            Divider()
+                            
+                            VStack(spacing: 12) {
+                                statusRow(title: "当前服务商 (Provider)", value: configManager.state.currentProvider, icon: "cpu", color: .blue)
+                                statusRow(title: "当前模型 (Model)", value: configManager.state.currentModel, icon: "brain.head.profile", color: .purple)
+                                statusRow(title: "登录模式", value: configManager.state.isOfficial ? "ChatGPT账号" : "API 密钥登录", icon: "key.fill", color: .orange)
+                                statusRow(title: "历史会话文件数", value: "\(configManager.state.sessionFileCount) 个", icon: "doc.text.fill", color: .green)
+                            }
+                        }
+                        .padding(20)
+                        .background(Color(NSColor.windowBackgroundColor))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                        
+                        // 2. 同步状态面板
+                        VStack(spacing: 16) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("本地同步就绪状况")
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                    
+                                    if configManager.state.pendingSyncCount > 0 {
+                                        Text("检测到有 \(configManager.state.pendingSyncCount) 个历史会话属于旧模式，目前在 Codex 侧边栏已被隐藏。")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("完美！本地所有历史会话均已对齐当前配置模式，侧边栏显示完整。")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
-                            }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(syncEngine.isSyncing ? Color.gray.opacity(0.5) : (configManager.state.pendingSyncCount > 0 ? Color.blue : Color.gray.opacity(0.5)))
-                            )
-                            .shadow(color: !syncEngine.isSyncing && configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
-                        
-                        // 进度条指示面板
-                        if syncEngine.isSyncing || syncEngine.syncSuccess || syncEngine.syncError != nil {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ProgressBarView(title: "1. 准备安全备份", progress: syncEngine.backupProgress, hasError: syncEngine.syncError != nil)
-                                ProgressBarView(title: "2. 同步本地数据库", progress: syncEngine.dbProgress, hasError: syncEngine.syncError != nil)
-                                ProgressBarView(title: "3. 更新会话元数据", progress: syncEngine.sessionFilesProgress, hasError: syncEngine.syncError != nil)
-                                ProgressBarView(title: "4. 对齐侧边栏索引", progress: syncEngine.sidebarIndexProgress, hasError: syncEngine.syncError != nil)
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                            .cornerRadius(8)
-                        }
-                        
-                        // 提示与错误信息
-                        if let error = syncEngine.syncError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(8)
-                                .background(Color.red.opacity(0.1))
-                                .cornerRadius(6)
-                        } else if syncEngine.syncSuccess {
-                            Text("同步完成！请重启 Codex 客户端以刷新侧边栏。")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                                .padding(8)
-                                .background(Color.green.opacity(0.1))
-                                .cornerRadius(6)
-                        }
-                        
-                        Divider()
-                            .padding(.vertical, 2)
-                        
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Label("残留幽灵会话清理", systemImage: "trash.fill")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.secondary)
                                 Spacer()
                                 
-                                Button(action: {
-                                    syncEngine.cleanGhostSessions { success in
-                                        if success {
-                                            configManager.refreshState()
-                                        }
-                                    }
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "trash")
-                                        Text("立即清理")
-                                    }
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(syncEngine.isCleaning ? .secondary : .red)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(syncEngine.isCleaning ? Color.gray.opacity(0.1) : Color.red.opacity(0.08))
-                                    .cornerRadius(6)
+                                // 悬浮数字徽章
+                                ZStack {
+                                    Circle()
+                                        .fill(configManager.state.pendingSyncCount > 0 ? Color.orange.opacity(0.15) : Color.green.opacity(0.15))
+                                        .frame(width: 44, height: 44)
+                                    
+                                    Text("\(configManager.state.pendingSyncCount)")
+                                        .font(.system(.title3, design: .rounded))
+                                        .fontWeight(.bold)
+                                        .foregroundColor(configManager.state.pendingSyncCount > 0 ? .orange : .green)
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(syncEngine.isCleaning || syncEngine.isSyncing)
                             }
                             
-                            Text("若您在磁盘中手动删除了会话 JSONL 文件，此功能可帮您一键清空数据库中无用的幽灵残留记录。")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            
-                            if syncEngine.isCleaning {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .controlSize(.small)
-                                    Text(syncEngine.progressMessage)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                            // 一键同步按钮
+                            Button(action: {
+                                syncEngine.startSync(
+                                    currentProvider: configManager.state.currentProvider,
+                                    currentModel: configManager.state.currentModel
+                                ) { success in
+                                    if success {
+                                        configManager.refreshState()
+                                    }
                                 }
-                                .padding(.top, 4)
-                            } else if let cleanErr = syncEngine.cleanError {
-                                Text("⚠️ 清理失败: \(cleanErr)")
+                            }) {
+                                HStack {
+                                    if syncEngine.isSyncing {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .progressViewStyle(.circular)
+                                            .scaleEffect(0.8)
+                                            .frame(width: 16, height: 16)
+                                        Text("正在同步...")
+                                    } else {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                        Text("一键对齐本地历史")
+                                    }
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(syncEngine.isSyncing ? Color.gray.opacity(0.5) : (configManager.state.pendingSyncCount > 0 ? Color.blue : Color.gray.opacity(0.5)))
+                                )
+                                .shadow(color: !syncEngine.isSyncing && configManager.state.pendingSyncCount > 0 ? .blue.opacity(0.3) : .clear, radius: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
+                            
+                            // 进度条指示面板
+                            if syncEngine.isSyncing || syncEngine.syncSuccess || syncEngine.syncError != nil {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ProgressBarView(title: "1. 准备安全备份", progress: syncEngine.backupProgress, hasError: syncEngine.syncError != nil)
+                                    ProgressBarView(title: "2. 同步本地数据库", progress: syncEngine.dbProgress, hasError: syncEngine.syncError != nil)
+                                    ProgressBarView(title: "3. 更新会话元数据", progress: syncEngine.sessionFilesProgress, hasError: syncEngine.syncError != nil)
+                                    ProgressBarView(title: "4. 对齐侧边栏索引", progress: syncEngine.sidebarIndexProgress, hasError: syncEngine.syncError != nil)
+                                }
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 12)
+                                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                                .cornerRadius(8)
+                            }
+                            
+                            // 提示与错误信息
+                            if let error = syncEngine.syncError {
+                                Text(error)
                                     .font(.caption)
                                     .foregroundColor(.red)
-                                    .padding(6)
-                                    .background(Color.red.opacity(0.08))
+                                    .padding(8)
+                                    .background(Color.red.opacity(0.1))
                                     .cornerRadius(6)
-                                    .padding(.top, 2)
-                            } else if syncEngine.cleanSuccess {
-                                Text("✨ " + syncEngine.progressMessage)
+                            } else if syncEngine.syncSuccess {
+                                Text("同步完成！请重启 Codex 客户端以刷新侧边栏。")
                                     .font(.caption)
                                     .foregroundColor(.green)
-                                    .padding(6)
-                                    .background(Color.green.opacity(0.08))
+                                    .padding(8)
+                                    .background(Color.green.opacity(0.1))
                                     .cornerRadius(6)
-                                    .padding(.top, 2)
+                            }
+                            
+                            Divider()
+                                .padding(.vertical, 2)
+                            
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Label("残留幽灵会话清理", systemImage: "trash.fill")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    
+                                    Button(action: {
+                                        syncEngine.cleanGhostSessions { success in
+                                            if success {
+                                                configManager.refreshState()
+                                            }
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "trash")
+                                            Text("立即清理")
+                                        }
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(syncEngine.isCleaning ? .secondary : .red)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(syncEngine.isCleaning ? Color.gray.opacity(0.1) : Color.red.opacity(0.08))
+                                        .cornerRadius(6)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(syncEngine.isCleaning || syncEngine.isSyncing)
+                                }
+                                
+                                Text("若您在磁盘中手动删除了会话 JSONL 文件，此功能可帮您一键清空数据库中无用的幽灵残留记录。")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                if syncEngine.isCleaning {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .progressViewStyle(.circular)
+                                            .controlSize(.small)
+                                        Text(syncEngine.progressMessage)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top, 4)
+                                } else if let cleanErr = syncEngine.cleanError {
+                                    Text("⚠️ 清理失败: \(cleanErr)")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .padding(6)
+                                        .background(Color.red.opacity(0.08))
+                                        .cornerRadius(6)
+                                        .padding(.top, 2)
+                                } else if syncEngine.cleanSuccess {
+                                    Text("✨ " + syncEngine.progressMessage)
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                        .padding(6)
+                                        .background(Color.green.opacity(0.08))
+                                        .cornerRadius(6)
+                                        .padding(.top, 2)
+                                }
                             }
                         }
+                        .padding(20)
+                        .background(Color(NSColor.windowBackgroundColor))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
                     }
                     .padding(20)
-                    .background(Color(NSColor.windowBackgroundColor))
-                    .cornerRadius(12)
-                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
-                    
-                    Spacer()
                 }
-                .padding(20)
                 .frame(minWidth: 260)
                 
                 // 右半：当前预设的配置修改与激活详情
@@ -504,24 +502,24 @@ struct ContentView: View {
                             }
                             Divider()
                             
-                            HStack {
-                                Text("预设模式")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                Text(preset.isOfficial ? "ChatGPT账号" : "API模式")
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(preset.isOfficial ? .blue : .purple)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(preset.isOfficial ? Color.blue.opacity(0.1) : Color.purple.opacity(0.1))
-                                    .cornerRadius(6)
-                            }
-                            .padding(.bottom, 6)
-                            
                             ScrollView {
                                 VStack(alignment: .leading, spacing: 14) {
+                                    HStack {
+                                        Text("预设模式")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(preset.isOfficial ? "ChatGPT账号" : "API模式")
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(preset.isOfficial ? .blue : .purple)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(preset.isOfficial ? Color.blue.opacity(0.1) : Color.purple.opacity(0.1))
+                                            .cornerRadius(6)
+                                    }
+                                    .padding(.bottom, 6)
+                                    
                                     Group {
                                         Text("预设名称")
                                             .font(.caption)
@@ -667,22 +665,26 @@ struct ContentView: View {
                         
                     } else {
                         // 未选择预设时的欢迎提示
-                        VStack(spacing: 16) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 48))
-                                .foregroundColor(.secondary.opacity(0.7))
-                            
-                            Text("请在左侧选择一个配置预设")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Text("您可以为不同的 API Key 或 ChatGPT账号配置独立卡片，实现秒级无缝切换，并保持历史对话在侧边栏永不隐藏。")
-                                .font(.caption)
-                                .foregroundColor(.secondary.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                Spacer(minLength: 40)
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                
+                                Text("请在左侧选择一个配置预设")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("您可以为不同的 API Key 或 ChatGPT账号配置独立卡片，实现秒级无缝切换，并保持历史对话在侧边栏永不隐藏。")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary.opacity(0.8))
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                                Spacer(minLength: 40)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
                 .frame(minWidth: 220)
