@@ -87,7 +87,7 @@ class ConfigManager: ObservableObject {
             let editor = TomlEditor(text: tomlText)
             
             let provider = editor.getValue(forKey: "model_provider") ?? "openai"
-            let model = editor.getValue(forKey: "model") ?? "(默认)"
+            let model = editor.getValue(forKey: "model") ?? "gpt-5.5"
             
             newState.currentProvider = provider
             newState.currentModel = model
@@ -160,11 +160,18 @@ class ConfigManager: ObservableObject {
                 newState.isOfficial = (provider == "openai")
             }
             
-            // 4. 获取会话文件数量
+            // 4. 获取会话文件数量（递归扫描子目录）
             let sessionsDir = codexHome.appendingPathComponent("sessions")
             if FileManager.default.fileExists(atPath: sessionsDir.path) {
-                let files = try FileManager.default.contentsOfDirectory(at: sessionsDir, includingPropertiesForKeys: nil)
-                newState.sessionFileCount = files.filter { $0.lastPathComponent.hasPrefix("rollout-") && $0.pathExtension == "jsonl" }.count
+                var count = 0
+                if let enumerator = FileManager.default.enumerator(at: sessionsDir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
+                    for case let fileURL as URL in enumerator {
+                        if fileURL.lastPathComponent.hasPrefix("rollout-") && fileURL.pathExtension == "jsonl" {
+                            count += 1
+                        }
+                    }
+                }
+                newState.sessionFileCount = count
             }
             
             // 5. 读取 SQLite 数据库，获取总线程数与可移动/不匹配的线程数
@@ -422,9 +429,10 @@ class ConfigManager: ObservableObject {
         }
         
         if sqlite3_prepare_v2(db, querySql, -1, &stmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(stmt, 1, currentProvider, -1, nil)
+            let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(stmt, 1, currentProvider, -1, SQLITE_TRANSIENT)
             if hasModelColumn {
-                sqlite3_bind_text(stmt, 2, currentModel, -1, nil)
+                sqlite3_bind_text(stmt, 2, currentModel, -1, SQLITE_TRANSIENT)
             }
             if sqlite3_step(stmt) == SQLITE_ROW {
                 movable = Int(sqlite3_column_int(stmt, 0))

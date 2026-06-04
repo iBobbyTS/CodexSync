@@ -159,7 +159,7 @@ class SyncEngine: ObservableObject {
                 var updateStmt: OpaquePointer?
                 let prepareResult = sqlite3_prepare_v2(db, querySql, -1, &updateStmt, nil)
                 if prepareResult == SQLITE_OK {
-                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
                     sqlite3_bind_text(updateStmt, 1, provider, -1, SQLITE_TRANSIENT)
                     if hasModelColumn {
                         sqlite3_bind_text(updateStmt, 2, model, -1, SQLITE_TRANSIENT)
@@ -203,8 +203,14 @@ class SyncEngine: ObservableObject {
             return 0
         }
         
-        let files = try FileManager.default.contentsOfDirectory(at: sessionsDir, includingPropertiesForKeys: nil)
-        let jsonlFiles = files.filter { $0.lastPathComponent.hasPrefix("rollout-") && $0.pathExtension == "jsonl" }
+        var jsonlFiles: [URL] = []
+        if let enumerator = FileManager.default.enumerator(at: sessionsDir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
+            for case let fileURL as URL in enumerator {
+                if fileURL.lastPathComponent.hasPrefix("rollout-") && fileURL.pathExtension == "jsonl" {
+                    jsonlFiles.append(fileURL)
+                }
+            }
+        }
         
         var updatedCount = 0
         
@@ -431,11 +437,11 @@ class SyncEngine: ObservableObject {
             throw NSError(domain: "CodexSync", code: 500, userInfo: [NSLocalizedDescriptionKey: "无法初始化正则表达式"])
         }
         
-        func scanDirectory(_ dir: URL) {
+        func scanDirectoryRecursive(_ dir: URL) {
             guard fm.fileExists(atPath: dir.path) else { return }
-            if let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
-                let jsonlFiles = files.filter { $0.lastPathComponent.hasPrefix("rollout-") && $0.pathExtension == "jsonl" }
-                for fileURL in jsonlFiles {
+            if let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
+                for case let fileURL as URL in enumerator {
+                    guard fileURL.lastPathComponent.hasPrefix("rollout-") && fileURL.pathExtension == "jsonl" else { continue }
                     let filename = fileURL.lastPathComponent
                     let nsString = filename as NSString
                     let results = regex.matches(in: filename, options: [], range: NSRange(location: 0, length: nsString.length))
@@ -448,9 +454,9 @@ class SyncEngine: ObservableObject {
             }
         }
         
-        scanDirectory(sessionsDir)
+        scanDirectoryRecursive(sessionsDir)
         let archivedSessionsDir = codexHome.appendingPathComponent("archived_sessions")
-        scanDirectory(archivedSessionsDir)
+        scanDirectoryRecursive(archivedSessionsDir)
         
         return uuids
     }
@@ -506,7 +512,7 @@ class SyncEngine: ObservableObject {
                 
                 if sqlite3_prepare_v2(db, deleteSql, -1, &deleteStmt, nil) == SQLITE_OK {
                     var deletedSuccessfully = true
-                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
                     var actualDeletedRows = 0
                     
                     for ghostId in ghostIds {
