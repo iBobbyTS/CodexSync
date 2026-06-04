@@ -130,7 +130,17 @@ class ConfigManager: ObservableObject {
                                    presetAccId == accId {
                                     
                                     if presetAuthStr != currentAuthJsonStr {
-                                        self.presets[i].authJson = currentAuthJsonStr
+                                        self.presets[i] = ProviderPreset(
+                                            id: preset.id,
+                                            name: preset.name,
+                                            isOfficial: preset.isOfficial,
+                                            providerId: preset.providerId,
+                                            model: preset.model,
+                                            baseUrl: preset.baseUrl,
+                                            apiKey: preset.apiKey,
+                                            authJson: currentAuthJsonStr,
+                                            detectedBalanceProvider: preset.detectedBalanceProvider
+                                        )
                                         updatedAny = true
                                     }
                                 }
