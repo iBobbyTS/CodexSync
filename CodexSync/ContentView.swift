@@ -489,6 +489,15 @@ struct ContentView: View {
                                     let success = configManager.switchPreset(preset)
                                     if success {
                                         NSSound.beep()
+                                        syncEngine.startSync(
+                                            currentProvider: configManager.state.currentProvider,
+                                            currentModel: configManager.state.currentModel,
+                                            includeArchived: includeArchived
+                                        ) { syncSuccess in
+                                            if syncSuccess {
+                                                configManager.refreshState()
+                                            }
+                                        }
                                     }
                                 }) {
                                     HStack(spacing: 6) {
