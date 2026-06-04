@@ -195,4 +195,61 @@ struct CodexSyncTests {
         #expect(syncEngine.syncError == nil)
     }
 
+    @Test func testSyncEngineArchivedSessions() async throws {
+        // 1. 创建临时沙盒环境
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        
+        let codexHome = tempDir.appendingPathComponent(".codex")
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        
+        // 创建 sessions 目录并写入假的 jsonl 文件
+        let sessionsDir = codexHome.appendingPathComponent("sessions")
+        try FileManager.default.createDirectory(at: sessionsDir, withIntermediateDirectories: true)
+        let activeFile = sessionsDir.appendingPathComponent("rollout-20260604-120000-active-uuid-0000000000.jsonl")
+        let dummySessionJson = "{\"session_meta\": {\"type\": \"meta\"}, \"payload\": {\"model_provider\": \"openai\", \"model\": \"gpt-5.5\"}}\n"
+        try dummySessionJson.write(to: activeFile, atomically: true, encoding: .utf8)
+        
+        // 创建 archived_sessions 目录并写入假的 jsonl 文件
+        let archivedDir = codexHome.appendingPathComponent("archived_sessions")
+        try FileManager.default.createDirectory(at: archivedDir, withIntermediateDirectories: true)
+        let archivedFile = archivedDir.appendingPathComponent("rollout-20260604-120000-archived-uuid-00000000.jsonl")
+        try dummySessionJson.write(to: archivedFile, atomically: true, encoding: .utf8)
+        
+        // 2. 初始化 SyncEngine
+        let syncEngine = SyncEngine(codexHome: codexHome)
+        
+        // 3. 不包含归档同步时运行 (includeArchived: false)
+        let success1 = await withCheckedContinuation { continuation in
+            syncEngine.startSync(currentProvider: "custom_provider", currentModel: "custom_model", includeArchived: false) { success in
+                continuation.resume(returning: success)
+            }
+        }
+        #expect(success1)
+        
+        // 验证：活跃会话文件已被修改，归档会话文件没有被修改
+        let activeContent1 = try String(contentsOf: activeFile, encoding: .utf8)
+        let archivedContent1 = try String(contentsOf: archivedFile, encoding: .utf8)
+        #expect(activeContent1.contains("custom_provider"))
+        #expect(!archivedContent1.contains("custom_provider"))
+        #expect(archivedContent1.contains("openai"))
+        
+        // 4. 包含归档同步时运行 (includeArchived: true)
+        let success2 = await withCheckedContinuation { continuation in
+            syncEngine.startSync(currentProvider: "final_provider", currentModel: "final_model", includeArchived: true) { success in
+                continuation.resume(returning: success)
+            }
+        }
+        #expect(success2)
+        
+        // 验证：两个文件现在都已更新
+        let activeContent2 = try String(contentsOf: activeFile, encoding: .utf8)
+        let archivedContent2 = try String(contentsOf: archivedFile, encoding: .utf8)
+        #expect(activeContent2.contains("final_provider"))
+        #expect(archivedContent2.contains("final_provider"))
+    }
+
 }

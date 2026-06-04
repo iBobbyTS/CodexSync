@@ -8,6 +8,7 @@ struct ContentView: View {
     
     @State private var selectedPresetId: String? = nil
     @State private var showingAddSheet = false
+    @State private var includeArchived = false
     
     // 自定义预设的新增/编辑临时状态
     @State private var newName = ""
@@ -291,11 +292,17 @@ struct ContentView: View {
                                 }
                             }
                             
+                            Toggle("包含已归档的会话", isOn: $includeArchived)
+                                .toggleStyle(.checkbox)
+                                .disabled(syncEngine.isSyncing || syncEngine.isCleaning)
+                                .padding(.bottom, 4)
+                            
                             // 一键同步按钮
                             Button(action: {
                                 syncEngine.startSync(
                                     currentProvider: configManager.state.currentProvider,
-                                    currentModel: configManager.state.currentModel
+                                    currentModel: configManager.state.currentModel,
+                                    includeArchived: includeArchived
                                 ) { success in
                                     if success {
                                         configManager.refreshState()

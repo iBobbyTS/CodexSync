@@ -24,6 +24,7 @@ class SyncEngine: ObservableObject {
     let backupDir: URL
     let sessionIndexURL: URL
     let sessionsDir: URL
+    let archivedSessionsDir: URL
     
     init() {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
@@ -32,19 +33,21 @@ class SyncEngine: ObservableObject {
         self.backupDir = codexHome.appendingPathComponent("history_sync_backups")
         self.sessionIndexURL = codexHome.appendingPathComponent("session_index.jsonl")
         self.sessionsDir = codexHome.appendingPathComponent("sessions")
+        self.archivedSessionsDir = codexHome.appendingPathComponent("archived_sessions")
     }
     
-    /// 用于测试和自定义路径的初始化函数
+    /// 用于测试 and 自定义路径的初始化函数
     init(codexHome: URL) {
         self.codexHome = codexHome
         self.dbURL = codexHome.appendingPathComponent("state_5.sqlite")
         self.backupDir = codexHome.appendingPathComponent("history_sync_backups")
         self.sessionIndexURL = codexHome.appendingPathComponent("session_index.jsonl")
         self.sessionsDir = codexHome.appendingPathComponent("sessions")
+        self.archivedSessionsDir = codexHome.appendingPathComponent("archived_sessions")
     }
     
     /// 开始对齐同步核心逻辑
-    func startSync(currentProvider: String, currentModel: String, completion: @escaping (Bool) -> Void) {
+    func startSync(currentProvider: String, currentModel: String, includeArchived: Bool = false, completion: @escaping (Bool) -> Void) {
         guard !currentProvider.isEmpty else {
             self.syncError = "当前 Provider 为空，无法执行同步"
             completion(false)
@@ -88,7 +91,7 @@ class SyncEngine: ObservableObject {
                     self.sessionFilesProgress = 0.0
                     self.progressMessage = "正在更新会话元数据文件..."
                 }
-                let updatedSessionFiles = try self.syncSessionFiles(provider: currentProvider, model: currentModel)
+                let updatedSessionFiles = try self.syncSessionFiles(provider: currentProvider, model: currentModel, includeArchived: includeArchived)
                 DispatchQueue.main.async {
                     self.sessionFilesProgress = 1.0
                 }
@@ -235,9 +238,16 @@ class SyncEngine: ObservableObject {
         throw NSError(domain: "SQLite", code: 5, userInfo: [NSLocalizedDescriptionKey: "数据库被 Codex 占用中，获取写锁超时。请确保 Codex 没有在回复或自动保存，然后再试。"])
     }
     
-    /// 原子性批量覆写 rollout JSONL 文件的会话元数据
-    private func syncSessionFiles(provider: String, model: String) throws -> Int {
-        guard FileManager.default.fileExists(atPath: sessionsDir.path) else {
+    private func syncSessionFiles(provider: String, model: String, includeArchived: Bool) throws -> Int {
+        var dirsToScan: [URL] = []
+        if FileManager.default.fileExists(atPath: sessionsDir.path) {
+            dirsToScan.append(sessionsDir)
+        }
+        if includeArchived && FileManager.default.fileExists(atPath: archivedSessionsDir.path) {
+            dirsToScan.append(archivedSessionsDir)
+        }
+        
+        if dirsToScan.isEmpty {
             DispatchQueue.main.async {
                 self.sessionFilesProgress = 1.0
             }
@@ -245,10 +255,12 @@ class SyncEngine: ObservableObject {
         }
         
         var jsonlFiles: [URL] = []
-        if let enumerator = FileManager.default.enumerator(at: sessionsDir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
-            for case let fileURL as URL in enumerator {
-                if fileURL.lastPathComponent.hasPrefix("rollout-") && fileURL.pathExtension == "jsonl" {
-                    jsonlFiles.append(fileURL)
+        for dir in dirsToScan {
+            if let enumerator = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) {
+                for case let fileURL as URL in enumerator {
+                    if fileURL.lastPathComponent.hasPrefix("rollout-") && fileURL.pathExtension == "jsonl" {
+                        jsonlFiles.append(fileURL)
+                    }
                 }
             }
         }
