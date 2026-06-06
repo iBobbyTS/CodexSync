@@ -1064,7 +1064,9 @@ struct ContentView: View {
             return true
         }
         return configManager.presets.contains { preset in
-            !preset.isOfficial && preset.apiKey == currentApiKey
+            !preset.isOfficial &&
+            preset.apiKey == currentApiKey &&
+            (preset.baseUrl ?? "") == (configManager.state.currentBaseUrl ?? "")
         }
     }
     

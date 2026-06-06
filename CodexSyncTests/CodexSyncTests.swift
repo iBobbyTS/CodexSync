@@ -3,6 +3,7 @@ import Foundation
 import SQLite3
 @testable import CodexSync
 
+@MainActor
 struct CodexSyncTests {
 
     @Test func testTomlEditorCleaning() async throws {
@@ -219,6 +220,19 @@ struct CodexSyncTests {
         let archivedFile = archivedDir.appendingPathComponent("rollout-20260604-120000-archived-uuid-00000000.jsonl")
         try dummySessionJson.write(to: archivedFile, atomically: true, encoding: .utf8)
         
+        // 创建一个假的 SQLite 数据库并创建 threads 表
+        let dbURL = codexHome.appendingPathComponent("state_5.sqlite")
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil) == SQLITE_OK else {
+            struct DbOpenError: Error {}
+            throw DbOpenError()
+        }
+        sqlite3_exec(db, "CREATE TABLE threads (id TEXT PRIMARY KEY, title TEXT, updated_at INTEGER, model_provider TEXT, model TEXT, archived INTEGER);", nil, nil, nil)
+        sqlite3_exec(db, "INSERT INTO threads (id, title, updated_at, model_provider, model, archived) VALUES ('00000000', 'Dummy Archived', 1700000000, 'openai', 'gpt-5.5', 1);", nil, nil, nil)
+        sqlite3_exec(db, "INSERT INTO threads (id, title, updated_at, model_provider, model, archived) VALUES ('0000000000', 'Dummy Active', 1700000000, 'openai', 'gpt-5.5', 0);", nil, nil, nil)
+        sqlite3_close(db)
+
+        
         // 2. 初始化 SyncEngine
         let syncEngine = SyncEngine(codexHome: codexHome)
         
@@ -250,6 +264,72 @@ struct CodexSyncTests {
         let archivedContent2 = try String(contentsOf: archivedFile, encoding: .utf8)
         #expect(activeContent2.contains("final_provider"))
         #expect(archivedContent2.contains("final_provider"))
+    }
+
+    @Test func testConfigManagerManualSyncsApiPreset() async throws {
+        // 1. 创建临时沙盒环境
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        
+        let codexHome = tempDir.appendingPathComponent(".codex")
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        
+        let configURL = codexHome.appendingPathComponent("config.toml")
+        let authURL = codexHome.appendingPathComponent("auth.json")
+        let presetsURL = tempDir.appendingPathComponent("presets.json")
+        
+        // 写入初始的 config.toml (含有新 URL)
+        let initialToml = """
+        model_provider = "custom"
+        model = "gpt-5.5"
+        
+        [model_providers.custom]
+        name = "Pixel API"
+        base_url = "https://cf.ai-pixel.online"
+        experimental_bearer_token = "sk-pixel-key"
+        """
+        try initialToml.write(to: configURL, atomically: true, encoding: .utf8)
+        
+        let initialAuth = "{\"auth_mode\": \"bearer_only\"}"
+        try initialAuth.write(to: authURL, atomically: true, encoding: .utf8)
+        
+        // 2. 写入预设 presets.json，但其中的 URL 是旧的
+        let initialPresets = [
+            ProviderPreset(
+                id: "test-pixel-id",
+                name: "Pixel API",
+                isOfficial: false,
+                providerId: "custom",
+                model: "gpt-5.5",
+                baseUrl: "https://ai-pixel.online",
+                apiKey: "sk-pixel-key",
+                authJson: nil,
+                detectedBalanceProvider: nil
+            )
+        ]
+        let data = try JSONEncoder().encode(initialPresets)
+        try data.write(to: presetsURL, options: .atomic)
+        
+        // 3. 初始化 ConfigManager，在 API 模式下不应该自动更新旧 URL
+        let manager = ConfigManager(codexHome: codexHome, presetsURL: presetsURL)
+        
+        // 4. 验证初始化后，预设的 URL 依旧是旧 URL（无自动同步）
+        #expect(manager.presets.count == 1)
+        let preset1 = manager.presets[0]
+        #expect(preset1.baseUrl == "https://ai-pixel.online")
+        
+        // 5. 手动触发导入配置
+        manager.importCurrentConfigAsNewPreset()
+        
+        // 6. 验证手动导入后，预设的 URL 已经成功更新为 config.toml 里的新 URL
+        #expect(manager.presets.count == 1)
+        let preset2 = manager.presets[0]
+        #expect(preset2.baseUrl == "https://cf.ai-pixel.online")
+        #expect(preset2.model == "gpt-5.5")
+        #expect(preset2.providerId == "custom")
     }
 
 }

@@ -326,7 +326,7 @@ class ConfigManager: ObservableObject {
                 presetAuthJson = nil
             }
             
-            // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，对于官方账号匹配 account_id）
+            // 5. 校验当前配置是否已经在预设列表中（基于核心配置字段对比，对于官方账号匹配 account_id，对于 API 账号匹配 apiKey）
             let matchedIndex = presets.firstIndex { preset in
                 if preset.isOfficial && isOfficial {
                     guard let currentAccountId = accountId,
@@ -339,32 +339,32 @@ class ConfigManager: ObservableObject {
                     }
                     return presetAccountId == currentAccountId
                 } else {
-                    return preset.providerId == providerId &&
-                           preset.isOfficial == isOfficial &&
-                           preset.model == model &&
-                           (preset.baseUrl ?? "") == (presetBaseUrl ?? "") &&
-                           (preset.apiKey ?? "") == (presetApiKey ?? "")
+                    if let keyA = preset.apiKey, !keyA.isEmpty,
+                       let keyB = presetApiKey, !keyB.isEmpty {
+                        return !preset.isOfficial && keyA == keyB && (preset.baseUrl ?? "") == (presetBaseUrl ?? "")
+                    }
+                    return false
                 }
             }
             
             if let index = matchedIndex {
                 let old = presets[index]
-                // 覆盖更新 auth.json 登录凭证，并保留用户修改的名字和原 ID
+                // 覆盖更新相关字段，并保留用户修改的名字和原 ID
                 let updated = ProviderPreset(
                     id: old.id,
                     name: old.name,
                     isOfficial: old.isOfficial,
-                    providerId: old.providerId,
-                    model: old.model,
-                    baseUrl: old.baseUrl,
-                    apiKey: old.apiKey,
+                    providerId: isOfficial ? old.providerId : providerId,
+                    model: isOfficial ? old.model : model,
+                    baseUrl: isOfficial ? old.baseUrl : presetBaseUrl,
+                    apiKey: isOfficial ? old.apiKey : presetApiKey,
                     authJson: presetAuthJson,
                     detectedBalanceProvider: old.detectedBalanceProvider
                 )
                 presets[index] = updated
                 savePresets()
                 refreshState()
-                return (true, "当前配置已在列表中（「\(old.name)」），已成功同步最新的 auth.json 登录凭证！")
+                return (true, "当前配置已在列表中（「\(old.name)」），已成功同步最新的配置信息！")
             }
             
             // 6. 不存在，则作为新预设追加在列表尾部
@@ -528,6 +528,27 @@ class ConfigManager: ObservableObject {
                     apiKey = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token") ?? ""
                 }
                 
+                // 若已存在相同 API Key + Base URL 的预设，则更新其配置（即非官方模式下的手动同步）
+                if !apiKey.isEmpty, let existingIndex = presets.firstIndex(where: { !$0.isOfficial && $0.apiKey == apiKey && ($0.baseUrl ?? "") == (baseUrl ?? "") }) {
+                    let old = presets[existingIndex]
+                    let updated = ProviderPreset(
+                        id: old.id,
+                        name: old.name,
+                        isOfficial: false,
+                        providerId: providerId,
+                        model: model,
+                        baseUrl: baseUrl,
+                        apiKey: apiKey,
+                        authJson: nil,
+                        detectedBalanceProvider: old.detectedBalanceProvider
+                    )
+                    presets[existingIndex] = updated
+                    savePresets()
+                    refreshState()
+                    detectAndSaveBalanceProvider(for: updated, debounce: false)
+                    return
+                }
+
                 preset = ProviderPreset(
                     id: UUID().uuidString,
                     name: name,
