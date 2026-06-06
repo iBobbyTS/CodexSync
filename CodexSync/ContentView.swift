@@ -91,8 +91,7 @@ struct ContentView: View {
                                 Spacer()
                                 
                                 // 激活与更新指示灯
-                                if configManager.state.currentProvider == preset.providerId &&
-                                   (!preset.isOfficial || configManager.state.isOfficial) {
+                                if isPresetActive(preset) {
                                     Circle()
                                         .fill(Color.green)
                                         .frame(width: 8, height: 8)
@@ -449,8 +448,7 @@ struct ContentView: View {
                        let presetIndex = configManager.presets.firstIndex(where: { $0.id == selectedId }) {
                         
                         let preset = configManager.presets[presetIndex]
-                        let isActive = configManager.state.currentProvider == preset.providerId &&
-                                       (!preset.isOfficial || configManager.state.isOfficial)
+                        let isActive = isPresetActive(preset)
                         let isAuthJsonInvalid = preset.isOfficial && jsonValidationError(preset.authJson ?? "") != nil
                         let isButtonDisabled = isActive || isAuthJsonInvalid
                         
@@ -900,14 +898,7 @@ struct ContentView: View {
             configManager.refreshState()
             
             // 默认选中当前 active 预设，没有的话选择第一个
-            if let activePreset = configManager.presets.first(where: { preset in
-                let providerMatch = configManager.state.currentProvider == preset.providerId
-                if preset.isOfficial {
-                    return providerMatch && configManager.state.isOfficial && isPresetMatchingCurrentAccount(preset)
-                } else {
-                    return providerMatch && !configManager.state.isOfficial
-                }
-            }) {
+            if let activePreset = configManager.presets.first(where: { isPresetActive($0) }) {
                 selectedPresetId = activePreset.id
             } else if let fallbackActivePreset = configManager.presets.first(where: { preset in
                 configManager.state.currentProvider == preset.providerId && (!preset.isOfficial || configManager.state.isOfficial)
@@ -1035,6 +1026,23 @@ struct ContentView: View {
             return false
         }
         return accountId == currentAccountId
+    }
+    
+    private func isPresetActive(_ preset: ProviderPreset) -> Bool {
+        let providerMatch = configManager.state.currentProvider == preset.providerId
+        if preset.isOfficial {
+            guard providerMatch && configManager.state.isOfficial else { return false }
+            if let currentAccountId = configManager.state.currentAccountId,
+               let presetAccountId = getAccountIdFromAuthJson(preset.authJson) {
+                return currentAccountId == presetAccountId
+            }
+            return true
+        } else {
+            guard providerMatch && !configManager.state.isOfficial else { return false }
+            return preset.model == configManager.state.currentModel &&
+                   (preset.baseUrl ?? "") == (configManager.state.currentBaseUrl ?? "") &&
+                   (preset.apiKey ?? "") == (configManager.state.currentApiKey ?? "")
+        }
     }
     
 

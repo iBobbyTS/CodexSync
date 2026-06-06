@@ -30,6 +30,7 @@ struct CodexState {
     var currentRefreshToken: String? = nil
     var currentLastRefresh: String? = nil
     var currentApiKey: String? = nil
+    var currentBaseUrl: String? = nil
     var currentCustomProviderName: String = ""
     
     var pendingSyncCount: Int {

@@ -160,6 +160,17 @@ class ConfigManager: ObservableObject {
                 newState.isOfficial = (provider == "openai")
             }
             
+            // 读取 API 模式下的 Base URL 和 API Key 字段
+            let sectionName = "model_providers.\(provider)"
+            let apiBaseUrl = editor.getValue(forKey: "base_url", inSection: sectionName) ?? editor.getValue(forKey: "base_url")
+            let apiKeyFromToml = editor.getValue(forKey: "experimental_bearer_token", inSection: sectionName) ?? editor.getValue(forKey: "experimental_bearer_token")
+            newState.currentBaseUrl = apiBaseUrl
+            if !newState.isOfficial {
+                if let key = apiKeyFromToml, !key.isEmpty {
+                    newState.currentApiKey = key
+                }
+            }
+            
             // 4. 获取会话文件数量（递归扫描子目录）
             let sessionsDir = codexHome.appendingPathComponent("sessions")
             if FileManager.default.fileExists(atPath: sessionsDir.path) {
